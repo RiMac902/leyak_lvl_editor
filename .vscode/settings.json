@@ -1,0 +1,12 @@
+{
+    "git.ignoredRepositories": [
+        "build/ios/SourcePackages/checkouts/DKCamera",
+        "build/ios/SourcePackages/checkouts/DKPhotoGallery",
+        "build/ios/SourcePackages/checkouts/DKImagePickerController",
+        "build/ios/SourcePackages/checkouts/SwiftyGif",
+        "build/ios/SourcePackages/checkouts/SDWebImage",
+        "build/ios/SourcePackages/checkouts/TOCropViewController"
+    ],
+    "git.scanRepositories": [],
+    "git.autoRepositoryDetection": "openEditors"
+}
