@@ -4,41 +4,46 @@ import 'package:flutter/services.dart';
 import 'package:leyak_lvl_editor/editor/components/grid_component.dart';
 import 'package:leyak_lvl_editor/editor/components/object_manager.dart';
 import 'package:leyak_lvl_editor/editor/controllers/editor_mode_controller.dart';
+import 'package:leyak_lvl_editor/editor/controllers/grid_snap_controller.dart';
 import 'package:leyak_lvl_editor/editor/input/editor_keyboard_shortcuts.dart';
+import 'package:leyak_lvl_editor/editor/input/grid_snap_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
-import 'package:leyak_lvl_editor/editor/overlays/mode_notification_controller.dart';
+import 'package:leyak_lvl_editor/editor/overlays/notification_controller.dart';
 
 /// Композиційний корінь сцени редактора: тримає дочірні компоненти
 /// і делегує drag/keyboard події відповідним відповідальним класам.
 class EditorWorld extends World
     with DragCallbacks, KeyboardHandler, HasGameReference<MainEditor> {
-  late final GridComponent grid;
-  late final ObjectManager objectManager;
-  late final ModeNotificationController _modeNotification;
+  final GridComponent grid = GridComponent();
+  final ObjectManager objectManager = ObjectManager();
+  late final NotificationController _notification;
 
   final EditorModeController modeController = EditorModeController();
-  final EditorKeyboardShortcuts _shortcuts = const EditorKeyboardShortcuts();
+  final GridSnapController snapController = GridSnapController();
+
+  final EditorKeyboardShortcuts _modeShortcuts = const EditorKeyboardShortcuts();
+  final GridSnapShortcut _snapShortcut = const GridSnapShortcut();
 
   Vector2? currentPointerPos;
 
   EditorMode get currentMode => modeController.currentMode;
-  String get currentModeText => currentMode.label;
+  String get notificationText => _notification.message;
 
   @override
   Future<void> onLoad() async {
-    grid = GridComponent();
-    objectManager = ObjectManager();
     add(grid);
     add(objectManager);
 
-    _modeNotification = ModeNotificationController(game);
-    modeController.onModeChanged = (_) => _modeNotification.show();
+    _notification = NotificationController(game);
+    modeController.onModeChanged = (mode) => _notification.show(mode.label);
+    snapController.onSnapChanged = (enabled) =>
+        _notification.show(enabled ? 'SNAP: ON' : 'SNAP: OFF');
   }
 
   @override
   void onRemove() {
-    _modeNotification.dispose();
+    _notification.dispose();
     super.onRemove();
   }
 
@@ -67,9 +72,17 @@ class EditorWorld extends World
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    final mode = _shortcuts.resolve(event);
-    if (mode == null) return false;
-    modeController.setMode(mode);
-    return true;
+    final mode = _modeShortcuts.resolve(event);
+    if (mode != null) {
+      modeController.setMode(mode);
+      return true;
+    }
+
+    if (_snapShortcut.isToggle(event)) {
+      snapController.toggle();
+      return true;
+    }
+
+    return false;
   }
 }

@@ -15,6 +15,11 @@ class SelectionTool implements EditorTool {
 
   final List<LevelEntity> selected = [];
 
+  /// Викликається, коли змінюється виділення або завершується рух
+  /// об'єктів. Не залежить від Flutter — UI підписується через
+  /// [SceneCubit].
+  void Function()? onChanged;
+
   Vector2? _dragStartCell;
   final Map<LevelEntity, Vector2> _originalPositions = {};
 
@@ -43,6 +48,8 @@ class SelectionTool implements EditorTool {
       marqueeStart = cell;
       marqueeCurrent = cell;
     }
+
+    onChanged?.call();
   }
 
   @override
@@ -65,7 +72,11 @@ class SelectionTool implements EditorTool {
   @override
   void dragEnd() {
     if (marqueeStart != null && marqueeCurrent != null) {
-      final region = GridRect.fromCorners(marqueeStart!, marqueeCurrent!);
+      final region = GridRect.fromCorners(
+        marqueeStart!,
+        marqueeCurrent!,
+        inclusive: _converter.snapping,
+      );
       selected
         ..clear()
         ..addAll(_repository.findWithin(region));
@@ -75,5 +86,7 @@ class SelectionTool implements EditorTool {
     _dragStartCell = null;
     marqueeStart = null;
     marqueeCurrent = null;
+
+    onChanged?.call();
   }
 }

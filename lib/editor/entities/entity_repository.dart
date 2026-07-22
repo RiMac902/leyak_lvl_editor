@@ -6,9 +6,16 @@ import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 class EntityRepository {
   final List<LevelEntity> _entities = [];
 
+  /// Викликається після додавання нової сутності. Не залежить від Flutter —
+  /// UI-шар підписується на це через [SceneCubit].
+  void Function()? onChanged;
+
   List<LevelEntity> get all => List.unmodifiable(_entities);
 
-  void add(LevelEntity entity) => _entities.add(entity);
+  void add(LevelEntity entity) {
+    _entities.add(entity);
+    onChanged?.call();
+  }
 
   LevelEntity? findAt(Vector2 cell) {
     for (var i = _entities.length - 1; i >= 0; i--) {

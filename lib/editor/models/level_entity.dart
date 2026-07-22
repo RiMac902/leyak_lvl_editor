@@ -1,10 +1,11 @@
-import 'package:leyak_lvl_editor/editor/models/entity_type.dart';
+import 'package:flutter/material.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
 
+/// Абстрактна фігура сцени. Її поведінка (solid, deadly, декор тощо)
+/// визначається виключно [customProperties] — немає жорсткого типу.
 class LevelEntity {
   final String id;
-  final EntityType type;
   final TransformData transform;
   final VisualData visual;
   final Map<String, dynamic> customProperties;
@@ -15,7 +16,6 @@ class LevelEntity {
 
   LevelEntity({
     required this.id,
-    required this.type,
     TransformData? transform,
     VisualData? visual,
     Map<String, dynamic>? customProperties,
@@ -26,12 +26,13 @@ class LevelEntity {
        visual = visual ?? VisualData(),
        customProperties = customProperties ?? {};
 
-  LevelEntity.create(EntityType type)
+  LevelEntity.create({Map<String, dynamic>? customProperties, Color? color})
     : this(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: type,
         transform: TransformData(),
-        visual: VisualData(),
-        customProperties: {},
+        visual: VisualData(color: color ?? Colors.grey),
+        customProperties: customProperties == null
+            ? {}
+            : Map<String, dynamic>.from(customProperties),
       );
 }

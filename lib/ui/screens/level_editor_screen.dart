@@ -1,6 +1,11 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
+import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
+import 'package:leyak_lvl_editor/ui/widgets/hud_notification.dart';
+import 'package:leyak_lvl_editor/ui/widgets/inspector_panel.dart';
+import 'package:leyak_lvl_editor/ui/widgets/layers_panel.dart';
 
 class LevelEditorScreen extends StatefulWidget {
   const LevelEditorScreen({super.key});
@@ -11,6 +16,7 @@ class LevelEditorScreen extends StatefulWidget {
 
 class _LevelEditorScreenState extends State<LevelEditorScreen> {
   final FocusNode _gameFocusNode = FocusNode();
+  final MainEditor _game = MainEditor();
 
   @override
   void initState() {
@@ -29,38 +35,26 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () => _gameFocusNode.requestFocus(),
-        child: GameWidget(
-          game: MainEditor(),
-          focusNode: _gameFocusNode,
-          autofocus: true,
-          overlayBuilderMap: {
-            'ModeNotification': (context, MainEditor game) => Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        game.editorWorld.currentModeText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-          },
+    return BlocProvider<SceneCubit>.value(
+      value: _game.editorWorld.objectManager.sceneCubit,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            GestureDetector(
+              onTap: () => _gameFocusNode.requestFocus(),
+              child: GameWidget(
+                game: _game,
+                focusNode: _gameFocusNode,
+                autofocus: true,
+                overlayBuilderMap: {
+                  'HudNotification': (context, MainEditor game) =>
+                      HudNotification(game: game),
+                },
+              ),
+            ),
+            const LayersPanel(),
+            const InspectorPanel(),
+          ],
         ),
       ),
     );
