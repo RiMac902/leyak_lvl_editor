@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/grouping_service.dart';
+import 'package:leyak_lvl_editor/editor/geometry/scale_baking.dart';
 import 'package:leyak_lvl_editor/editor/history/history_controller.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
@@ -52,9 +53,14 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Одразу "запікає" [scale] в реальний [TransformData.size] (див.
+  /// [bakeEntityScale]) — з Inspector-поля це фактично "змасштабувати
+  /// відносно поточного розміру одноразово", а не тримати окремий
+  /// постійний множник, який hit-test/снепінг все одно ігнорують.
   void setEntityScale(LevelEntity entity, Vector2 scale) {
     _history.checkpoint();
     entity.transform.scale = scale;
+    bakeEntityScale(entity);
     refresh();
   }
 
@@ -64,9 +70,12 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Те саме, що [setEntityScale], але для групи — розганяє [scale] по
+  /// відносних position/size усіх членів (див. [bakeGroupScale]).
   void setGroupScale(LevelGroup group, Vector2 scale) {
     _history.checkpoint();
     group.scale = scale;
+    bakeGroupScale(group, _repository.membersOf(group.id));
     refresh();
   }
 

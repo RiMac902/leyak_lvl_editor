@@ -46,6 +46,9 @@ class VideoTextureManager {
     controller.initialize().then((_) {
       controller
         ..setLooping(true)
+        // Це лише джерело текстури для шейдера, невидимий у UI віджет —
+        // звук користувач чути не повинен.
+        ..setVolume(0)
         ..play();
     });
   }

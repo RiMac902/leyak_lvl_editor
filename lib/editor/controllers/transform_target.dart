@@ -1,6 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:leyak_lvl_editor/editor/components/entity_component.dart';
 import 'package:leyak_lvl_editor/editor/components/group_component.dart';
+import 'package:leyak_lvl_editor/editor/geometry/scale_baking.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 
@@ -19,6 +20,12 @@ abstract class TransformTarget {
 
   Vector2 get scale;
   set scale(Vector2 value);
+
+  /// Викликається після завершення драгу — "запікає" поточний [scale] у
+  /// реальні дані (розмір сутності / позиції членів групи) і скидає сам
+  /// [scale] назад у (1,1), щоб hit-test/снепінг завжди відображали
+  /// актуальний розмір, а не губились через суто візуальний множник.
+  void bakeScale();
 }
 
 class EntityTransformTarget implements TransformTarget {
@@ -43,6 +50,9 @@ class EntityTransformTarget implements TransformTarget {
   Vector2 get scale => entity.transform.scale;
   @override
   set scale(Vector2 value) => entity.transform.scale = value;
+
+  @override
+  void bakeScale() => bakeEntityScale(entity);
 }
 
 class GroupTransformTarget implements TransformTarget {
@@ -80,4 +90,7 @@ class GroupTransformTarget implements TransformTarget {
   Vector2 get scale => group.scale;
   @override
   set scale(Vector2 value) => group.scale = value;
+
+  @override
+  void bakeScale() => bakeGroupScale(group, members);
 }

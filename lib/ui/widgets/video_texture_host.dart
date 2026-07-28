@@ -75,22 +75,34 @@ class _VideoFrameCaptureState extends State<_VideoFrameCapture> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.manager.controllerFor(widget.path);
-    if (controller == null || !controller.value.isInitialized) {
-      return const SizedBox.shrink();
-    }
+    if (controller == null) return const SizedBox.shrink();
 
-    // Opacity(0.01), а не Offstage/opacity:0 — ті пропускають фактичний
-    // paint-прохід, тож RepaintBoundary.toImage() не мав би що знімати.
-    // RepaintBoundary знімає власний растр ДО того, як Opacity його
-    // притлумлює (opacity діє на рівні вище цього шару), тож захоплений
-    // кадр лишається повнояскравим — тьмяніє лише те, що бачить користувач.
-    return Opacity(
-      opacity: 0.01,
-      child: SizedBox(
-        width: 320,
-        height: 180,
-        child: RepaintBoundary(key: _boundaryKey, child: VideoPlayer(controller)),
-      ),
+    // controller.initialize() — асинхронний; ValueListenableBuilder тут
+    // обов'язковий, а не разовий читання value.isInitialized у build() —
+    // інакше цей віджет так і лишався б SizedBox.shrink() назавжди: build()
+    // викликається лише один раз одразу після acquire() (коли контролер
+    // ще не готовий), і нічого не тригерило б перебудову пізніше, коли
+    // ініціалізація фактично завершується.
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        if (!value.isInitialized) return const SizedBox.shrink();
+
+        // Opacity(0.01), а не Offstage/opacity:0 — ті пропускають
+        // фактичний paint-прохід, тож RepaintBoundary.toImage() не мав би
+        // що знімати. RepaintBoundary знімає власний растр ДО того, як
+        // Opacity його притлумлює (opacity діє на рівні вище цього шару),
+        // тож захоплений кадр лишається повнояскравим — тьмяніє лише те,
+        // що бачить користувач.
+        return Opacity(
+          opacity: 0.01,
+          child: SizedBox(
+            width: 320,
+            height: 180,
+            child: RepaintBoundary(key: _boundaryKey, child: VideoPlayer(controller)),
+          ),
+        );
+      },
     );
   }
 }

@@ -48,7 +48,16 @@ class TransformGizmoController {
     final gizmo = TransformGizmoComponent(
       target,
       onDragStarted: _onTransformStarted,
-      onCommitted: _onTransformCommitted,
+      // Запікаємо scale в реальні дані ПІСЛЯ кожного завершеного драгу
+      // (не тільки scale-хендлів — rotation-драг теж проходить через цей
+      // самий колбек, але bakeScale() безпечно ноуопить, якщо scale уже
+      // (1,1)) — інакше scale лишався б суто візуальним множником, і
+      // hit-test/снепінг далі рахували б за старим, немасштабованим
+      // розміром.
+      onCommitted: () {
+        target.bakeScale();
+        _onTransformCommitted();
+      },
     );
     _gizmo = gizmo;
     _host.add(gizmo);

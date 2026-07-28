@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +10,7 @@ import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/rendering/shader_catalog.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
+import 'package:leyak_lvl_editor/editor/video/video_asset_catalog.dart';
 
 /// Панель властивостей вибраної сутності. Єдине місце, де можна змінити
 /// `customProperties`/колір об'єкта — нових пресетів чи типів немає,
@@ -123,9 +123,9 @@ class _EntityEditor extends StatelessWidget {
           ),
           if (getIt<ShaderCatalog>().needsTexture(entity.visual.shaderId)) ...[
             const SizedBox(height: 4),
-            _VideoPickerButton(
+            _VideoAssetDropdown(
               videoPath: entity.visual.videoPath,
-              onPicked: (path) => context.read<SceneCubit>().setEntityVideo(entity, path),
+              onChanged: (path) => context.read<SceneCubit>().setEntityVideo(entity, path),
             ),
           ],
         ],
@@ -305,9 +305,9 @@ class _PartsEditor extends StatelessWidget {
           ),
           if (getIt<ShaderCatalog>().needsTexture(parts[i].shaderId)) ...[
             const SizedBox(height: 4),
-            _VideoPickerButton(
+            _VideoAssetDropdown(
               videoPath: parts[i].videoPath,
-              onPicked: (path) => cubit.setPartVideo(entity, i, path),
+              onChanged: (path) => cubit.setPartVideo(entity, i, path),
             ),
           ],
           if (i != parts.length - 1) const SizedBox(height: 6),
@@ -343,43 +343,47 @@ class _ShaderPickerDropdown extends StatelessWidget {
   }
 }
 
-/// Кнопка вибору відеофайлу для шейдера, що потребує текстури (див.
+/// Дропдаун вибору відео для шейдера, що потребує текстури (див.
 /// [ShaderCatalog.needsTexture]) — показується умовно, поруч із
-/// [_ShaderPickerDropdown]. Кадри вибраного відео подаються в шейдер через
-/// [VideoTextureManager]/[VideoTextureHost].
-class _VideoPickerButton extends StatelessWidget {
-  const _VideoPickerButton({required this.videoPath, required this.onPicked});
+/// [_ShaderPickerDropdown]. Навмисно НЕ дає обирати довільний файл з диску
+/// (system file picker під macOS App Sandbox — зайвий головний біль з
+/// entitlements) — лише те, що реально вкладено в застосунок як asset,
+/// див. [VideoAssetCatalog]. Кадри поточного вибору подаються в шейдер
+/// через [VideoTextureManager]/[VideoTextureHost].
+class _VideoAssetDropdown extends StatelessWidget {
+  const _VideoAssetDropdown({required this.videoPath, required this.onChanged});
 
   final String? videoPath;
-  final ValueChanged<String?> onPicked;
-
-  Future<void> _pick() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['mp4', 'mov', 'm4v', 'webm'],
-    );
-    final path = result?.files.single.path;
-    if (path != null) onPicked(path);
-  }
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final fileName = videoPath == null ? 'No video' : videoPath!.split('/').last;
-    return InkWell(
-      onTap: _pick,
-      child: Row(
-        children: [
-          const Icon(Icons.movie_outlined, size: 14, color: Colors.white54),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              fileName,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-              overflow: TextOverflow.ellipsis,
-            ),
+    final options = getIt<VideoAssetCatalog>().availablePaths;
+
+    if (options.isEmpty) {
+      return const Text(
+        'No videos in assets/videos/',
+        style: TextStyle(color: Colors.white38, fontSize: 11),
+      );
+    }
+
+    return DropdownButton<String?>(
+      value: options.contains(videoPath) ? videoPath : null,
+      isDense: true,
+      isExpanded: true,
+      dropdownColor: const Color(0xFF2A2A2A),
+      style: const TextStyle(color: Colors.white, fontSize: 12),
+      underline: const SizedBox.shrink(),
+      hint: const Text('Choose video…', style: TextStyle(color: Colors.white38, fontSize: 11)),
+      items: [
+        const DropdownMenuItem<String?>(value: null, child: Text('None')),
+        for (final path in options)
+          DropdownMenuItem<String?>(
+            value: path,
+            child: Text(path.split('/').last, overflow: TextOverflow.ellipsis),
           ),
-        ],
-      ),
+      ],
+      onChanged: onChanged,
     );
   }
 }
