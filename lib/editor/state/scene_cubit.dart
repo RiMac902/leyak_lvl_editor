@@ -70,9 +70,39 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Змінює колір одного [EntityPart] складеної (compound) сутності — аналог
+  /// зміни fill в одного `<rect>` всередині SVG-групи.
+  void setPartColor(LevelEntity entity, int partIndex, Color color) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].color = color;
+    refresh();
+  }
+
   void deleteEntity(LevelEntity entity) {
+    if (entity.isLocked) return;
+
     _history.checkpoint();
     _selectionTool.selected.remove(entity);
     _repository.remove(entity);
+    // repository.remove вже викликає onChanged (=refresh), але не знає про
+    // зміну виділення — без цього виклику підсвітка/гізмо лишились би
+    // застарілими, якби сутність була виділена в момент видалення.
+    _selectionTool.onChanged?.call();
+  }
+
+  /// Перемикає lock: заблокована сутність не потрапляє в hit-test
+  /// ([EntityRepository.findAt]/[findWithin]), тож її не можна виділити,
+  /// перемістити, видалити чи згрупувати з канвасу. Якщо вона була
+  /// виділена в момент блокування — знімає виділення, інакше гізмо/
+  /// підсвітка лишились би вказувати на щось більше не інтерактивне.
+  void toggleLock(LevelEntity entity) {
+    entity.isLocked = !entity.isLocked;
+    if (entity.isLocked) {
+      _selectionTool.selected.remove(entity);
+    }
+    _selectionTool.onChanged?.call();
   }
 }

@@ -97,9 +97,16 @@ class _EntityEditor extends StatelessWidget {
           onScaleChanged: (scale) => context.read<SceneCubit>().setEntityScale(entity, scale),
         ),
         const SizedBox(height: 12),
-        const Text('Color', style: TextStyle(color: Colors.white54, fontSize: 12)),
-        const SizedBox(height: 4),
-        _ColorPickerButton(entity: entity),
+        if (entity.parts != null && entity.parts!.isNotEmpty)
+          _PartsEditor(entity: entity)
+        else ...[
+          const Text('Color', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 4),
+          _ColorPickerButton(
+            color: entity.visual.color,
+            onColorPicked: (color) => context.read<SceneCubit>().setEntityColor(entity, color),
+          ),
+        ],
         if (entity.customProperties.isNotEmpty) ...[
           const SizedBox(height: 12),
           const Text('customProperties', style: TextStyle(color: Colors.white54, fontSize: 12)),
@@ -124,15 +131,18 @@ class _EntityEditor extends StatelessWidget {
 }
 
 /// Відкриває повноцінний [ColorPicker] (HSV-колесо + RGB/HEX-поля) у
-/// діалозі й застосовує вибір лише після підтвердження.
+/// діалозі й застосовує вибір лише після підтвердження. Не прив'язаний до
+/// конкретної сутності — використовується і для кольору цілої сутності
+/// ([_EntityEditor]), і для кольору окремого [EntityPart] ([_PartsEditor]).
 class _ColorPickerButton extends StatelessWidget {
-  const _ColorPickerButton({required this.entity});
+  const _ColorPickerButton({required this.color, required this.onColorPicked, this.label = 'Change color'});
 
-  final LevelEntity entity;
+  final Color color;
+  final ValueChanged<Color> onColorPicked;
+  final String label;
 
   Future<void> _openPicker(BuildContext context) async {
-    final cubit = context.read<SceneCubit>();
-    var pickedColor = entity.visual.color;
+    var pickedColor = color;
 
     await showDialog<void>(
       context: context,
@@ -143,7 +153,7 @@ class _ColorPickerButton extends StatelessWidget {
           content: SingleChildScrollView(
             child: ColorPicker(
               pickerColor: pickedColor,
-              onColorChanged: (color) => pickedColor = color,
+              onColorChanged: (c) => pickedColor = c,
               enableAlpha: true,
               displayThumbColor: true,
               labelTypes: const [ColorLabelType.rgb, ColorLabelType.hsv, ColorLabelType.hex],
@@ -157,7 +167,7 @@ class _ColorPickerButton extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                cubit.setEntityColor(entity, pickedColor);
+                onColorPicked(pickedColor);
                 Navigator.of(dialogContext).pop();
               },
               child: const Text('Select'),
@@ -178,15 +188,46 @@ class _ColorPickerButton extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: entity.visual.color,
+              color: color,
               border: Border.all(color: Colors.white54),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 8),
-          const Text('Change color', style: TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+/// Список частин складеної (compound) сутності — по одному кольоровому
+/// свотчу на [EntityPart], аналог редагування fill окремого `<rect>` в
+/// SVG-групі. Показується в [_EntityEditor] замість одного цілісного
+/// "Color" редактора, коли `entity.parts` непорожній.
+class _PartsEditor extends StatelessWidget {
+  const _PartsEditor({required this.entity});
+
+  final LevelEntity entity;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SceneCubit>();
+    final parts = entity.parts!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Parts (${parts.length})', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 4),
+        for (var i = 0; i < parts.length; i++) ...[
+          _ColorPickerButton(
+            color: parts[i].color,
+            label: 'Part $i',
+            onColorPicked: (color) => cubit.setPartColor(entity, i, color),
+          ),
+          if (i != parts.length - 1) const SizedBox(height: 4),
+        ],
+      ],
     );
   }
 }

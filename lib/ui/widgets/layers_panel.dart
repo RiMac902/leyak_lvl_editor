@@ -74,39 +74,55 @@ class _LayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: isSelected ? Colors.white24 : Colors.transparent,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: entity.visual.color,
-              border: Border.all(color: Colors.white54),
+    return Opacity(
+      opacity: entity.isLocked ? 0.5 : 1.0,
+      child: Container(
+        color: isSelected ? Colors.white24 : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: entity.visual.color,
+                border: Border.all(color: Colors.white54),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Shape ${entity.id}',
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Shape ${entity.id}',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
             ),
-          ),
-          if (entity.groupId != null) ...[
-            _GroupBadge(groupId: entity.groupId!),
-            const SizedBox(width: 6),
+            if (entity.groupId != null) ...[
+              _GroupBadge(groupId: entity.groupId!),
+              const SizedBox(width: 6),
+            ],
+            IconButton(
+              icon: Icon(
+                entity.isLocked ? Icons.lock : Icons.lock_open,
+                size: 16,
+                color: Colors.white54,
+              ),
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+              splashRadius: 14,
+              onPressed: () => context.read<SceneCubit>().toggleLock(entity),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white54),
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+              splashRadius: 14,
+              onPressed: entity.isLocked
+                  ? null
+                  : () => context.read<SceneCubit>().deleteEntity(entity),
+            ),
           ],
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white54),
-            constraints: const BoxConstraints(),
-            padding: EdgeInsets.zero,
-            splashRadius: 14,
-            onPressed: () => context.read<SceneCubit>().deleteEntity(entity),
-          ),
-        ],
+        ),
       ),
     );
   }

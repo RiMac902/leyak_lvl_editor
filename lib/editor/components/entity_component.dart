@@ -55,10 +55,27 @@ class EntityComponent extends PositionComponent
 
   @override
   void render(Canvas canvas) {
-    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    canvas.drawRect(rect, Paint()..color = entity.visual.color);
+    final parts = entity.parts;
+    if (parts != null && parts.isNotEmpty) {
+      final tileSize = game.tileSize;
+      for (final part in parts) {
+        final partRect = Rect.fromLTWH(
+          part.relativePosition.x * tileSize,
+          part.relativePosition.y * tileSize,
+          part.size.x * tileSize,
+          part.size.y * tileSize,
+        );
+        canvas.drawRect(partRect, Paint()..color = part.color);
+      }
+    } else {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.x, size.y),
+        Paint()..color = entity.visual.color,
+      );
+    }
 
     if (isSelected) {
+      final rect = Rect.fromLTWH(0, 0, size.x, size.y);
       final borderPaint = Paint()
         ..color = const Color(0xFFFFFFFF)
         ..style = PaintingStyle.stroke

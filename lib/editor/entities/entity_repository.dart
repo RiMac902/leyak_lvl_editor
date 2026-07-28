@@ -67,10 +67,12 @@ class EntityRepository {
   List<LevelEntity> membersOf(String groupId) =>
       _entities.where((entity) => entity.groupId == groupId).toList();
 
+  /// Заблоковані сутності навмисно пропускаються і тут, і в [findWithin] —
+  /// це і є весь ефект "lock": вони просто невидимі для виділення.
   LevelEntity? findAt(Vector2 cell) {
     for (var i = _entities.length - 1; i >= 0; i--) {
       final entity = _entities[i];
-      if (!entity.isVisible) continue;
+      if (!entity.isVisible || entity.isLocked) continue;
 
       final pos = absolutePositionOf(entity);
       final size = entity.transform.size;
@@ -89,7 +91,9 @@ class EntityRepository {
     return _entities
         .where(
           (entity) =>
-              entity.isVisible && region.intersects(absolutePositionOf(entity), entity.transform.size),
+              entity.isVisible &&
+              !entity.isLocked &&
+              region.intersects(absolutePositionOf(entity), entity.transform.size),
         )
         .toList();
   }

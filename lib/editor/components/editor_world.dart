@@ -10,6 +10,7 @@ import 'package:leyak_lvl_editor/editor/input/duplicate_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/editor_keyboard_shortcuts.dart';
 import 'package:leyak_lvl_editor/editor/input/grid_snap_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/group_shortcut.dart';
+import 'package:leyak_lvl_editor/editor/input/merge_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/undo_redo_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
@@ -30,6 +31,7 @@ class EditorWorld extends World
   final GroupShortcut _groupShortcut = const GroupShortcut();
   final DeleteShortcut _deleteShortcut = const DeleteShortcut();
   final DuplicateShortcut _duplicateShortcut = const DuplicateShortcut();
+  final MergeShortcut _mergeShortcut = const MergeShortcut();
   final UndoRedoShortcut _undoRedoShortcut = const UndoRedoShortcut();
   final GridSnapShortcut _snapShortcut = const GridSnapShortcut();
 
@@ -124,6 +126,17 @@ class EditorWorld extends World
 
     if (_deleteShortcut.isTrigger(event)) {
       objectManager.deleteSelection();
+      return true;
+    }
+
+    if (_mergeShortcut.isTrigger(event, keysPressed)) {
+      final hadSelection = objectManager.hasSelection;
+      final didMerge = objectManager.mergeSelection();
+      if (didMerge) {
+        _notification.show('MERGED');
+      } else if (hadSelection) {
+        _notification.show("CAN'T MERGE");
+      }
       return true;
     }
 

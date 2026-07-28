@@ -7,10 +7,12 @@ import 'package:leyak_lvl_editor/editor/controllers/transform_gizmo_controller.d
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/grouping_service.dart';
+import 'package:leyak_lvl_editor/editor/entities/merge_service.dart';
 import 'package:leyak_lvl_editor/editor/geometry/grid_coordinate_converter.dart';
 import 'package:leyak_lvl_editor/editor/history/history_controller.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
+import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
@@ -41,6 +43,8 @@ class ObjectManager extends Component
   );
 
   late final GroupingService _groupingService = GroupingService(_repository, _groups);
+
+  final MergeService _mergeService = const MergeService();
 
   late final HistoryController _history = HistoryController(_repository, _groups);
 
@@ -92,6 +96,8 @@ class ObjectManager extends Component
   void handleDragUpdate(Vector2 worldPos) => _activeTool.dragUpdate(worldPos);
 
   void handleDragEnd() => _activeTool.dragEnd();
+
+  bool get hasSelection => _selectionTool.selected.isNotEmpty;
 
   /// Групує поточне виділення (Ctrl+G). Повертає false, якщо групувати
   /// нема що (менше 2 об'єктів або хтось із них вже в групі) — виклик
@@ -171,6 +177,16 @@ class ObjectManager extends Component
           shaderId: entity.visual.shaderId,
         ),
         customProperties: Map<String, dynamic>.of(entity.customProperties),
+        parts: entity.parts
+            ?.map(
+              (part) => EntityPart(
+                relativePosition: part.relativePosition.clone(),
+                size: part.size.clone(),
+                color: part.color,
+                shaderId: part.shaderId,
+              ),
+            )
+            .toList(),
         layer: entity.layer,
         isVisible: entity.isVisible,
       );
@@ -185,6 +201,28 @@ class ObjectManager extends Component
     _selectionTool.selected
       ..clear()
       ..addAll(clones);
+    _gizmoController.onSelectionChanged();
+    sceneCubit.refresh();
+    return true;
+  }
+
+  /// Об'єднує поточне виділення (Cmd/Ctrl+M) в одну складену сутність —
+  /// див. [MergeService]. Повертає false, якщо об'єднати не можна.
+  bool mergeSelection() {
+    final selected = List.of(_selectionTool.selected);
+    final merged = _mergeService.merge(selected);
+    if (merged == null) return false;
+
+    _history.checkpoint();
+    for (final entity in selected) {
+      _selectionTool.selected.remove(entity);
+      _repository.remove(entity);
+    }
+    _repository.add(merged);
+
+    _selectionTool.selected
+      ..clear()
+      ..add(merged);
     _gizmoController.onSelectionChanged();
     sceneCubit.refresh();
     return true;

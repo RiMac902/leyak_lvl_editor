@@ -2,10 +2,40 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
+import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
+
+/// Знімок одного [EntityPart] складеної сутності.
+class EntityPartSnapshot {
+  EntityPartSnapshot._({
+    required this.relativePosition,
+    required this.size,
+    required this.color,
+    required this.shaderId,
+  });
+
+  factory EntityPartSnapshot.of(EntityPart part) => EntityPartSnapshot._(
+    relativePosition: part.relativePosition.clone(),
+    size: part.size.clone(),
+    color: part.color,
+    shaderId: part.shaderId,
+  );
+
+  final Vector2 relativePosition;
+  final Vector2 size;
+  final Color color;
+  final String? shaderId;
+
+  EntityPart toPart() => EntityPart(
+    relativePosition: relativePosition.clone(),
+    size: size.clone(),
+    color: color,
+    shaderId: shaderId,
+  );
+}
 
 /// Незалежний від Flame знімок однієї [LevelEntity] — глибока копія всіх
 /// полів, потрібних, щоб відновити її точно такою ж, якою вона була.
@@ -18,9 +48,11 @@ class EntitySnapshot {
     required this.size,
     required this.color,
     required this.customProperties,
+    required this.parts,
     required this.layer,
     required this.groupId,
     required this.isVisible,
+    required this.isLocked,
   });
 
   factory EntitySnapshot.of(LevelEntity entity) => EntitySnapshot._(
@@ -31,9 +63,11 @@ class EntitySnapshot {
     size: entity.transform.size.clone(),
     color: entity.visual.color,
     customProperties: Map<String, dynamic>.of(entity.customProperties),
+    parts: entity.parts?.map(EntityPartSnapshot.of).toList(),
     layer: entity.layer,
     groupId: entity.groupId,
     isVisible: entity.isVisible,
+    isLocked: entity.isLocked,
   );
 
   final String id;
@@ -43,9 +77,11 @@ class EntitySnapshot {
   final Vector2 size;
   final Color color;
   final Map<String, dynamic> customProperties;
+  final List<EntityPartSnapshot>? parts;
   final int layer;
   final String? groupId;
   final bool isVisible;
+  final bool isLocked;
 
   LevelEntity toEntity() => LevelEntity(
     id: id,
@@ -57,8 +93,10 @@ class EntitySnapshot {
     ),
     visual: VisualData(color: color),
     customProperties: Map<String, dynamic>.of(customProperties),
+    parts: parts?.map((p) => p.toPart()).toList(),
     layer: layer,
     groupId: groupId,
+    isLocked: isLocked,
     isVisible: isVisible,
   );
 }
