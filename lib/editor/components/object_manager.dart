@@ -175,6 +175,7 @@ class ObjectManager extends Component
           color: entity.visual.color,
           spritePath: entity.visual.spritePath,
           shaderId: entity.visual.shaderId,
+          videoPath: entity.visual.videoPath,
         ),
         customProperties: Map<String, dynamic>.of(entity.customProperties),
         parts: entity.parts
@@ -184,6 +185,7 @@ class ObjectManager extends Component
                 size: part.size.clone(),
                 color: part.color,
                 shaderId: part.shaderId,
+                videoPath: part.videoPath,
               ),
             )
             .toList(),

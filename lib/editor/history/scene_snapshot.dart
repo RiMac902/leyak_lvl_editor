@@ -15,6 +15,7 @@ class EntityPartSnapshot {
     required this.size,
     required this.color,
     required this.shaderId,
+    required this.videoPath,
   });
 
   factory EntityPartSnapshot.of(EntityPart part) => EntityPartSnapshot._(
@@ -22,18 +23,21 @@ class EntityPartSnapshot {
     size: part.size.clone(),
     color: part.color,
     shaderId: part.shaderId,
+    videoPath: part.videoPath,
   );
 
   final Vector2 relativePosition;
   final Vector2 size;
   final Color color;
   final String? shaderId;
+  final String? videoPath;
 
   EntityPart toPart() => EntityPart(
     relativePosition: relativePosition.clone(),
     size: size.clone(),
     color: color,
     shaderId: shaderId,
+    videoPath: videoPath,
   );
 }
 
@@ -47,6 +51,8 @@ class EntitySnapshot {
     required this.scale,
     required this.size,
     required this.color,
+    required this.shaderId,
+    required this.videoPath,
     required this.customProperties,
     required this.parts,
     required this.layer,
@@ -62,6 +68,8 @@ class EntitySnapshot {
     scale: entity.transform.scale.clone(),
     size: entity.transform.size.clone(),
     color: entity.visual.color,
+    shaderId: entity.visual.shaderId,
+    videoPath: entity.visual.videoPath,
     customProperties: Map<String, dynamic>.of(entity.customProperties),
     parts: entity.parts?.map(EntityPartSnapshot.of).toList(),
     layer: entity.layer,
@@ -76,6 +84,8 @@ class EntitySnapshot {
   final Vector2 scale;
   final Vector2 size;
   final Color color;
+  final String? shaderId;
+  final String? videoPath;
   final Map<String, dynamic> customProperties;
   final List<EntityPartSnapshot>? parts;
   final int layer;
@@ -91,7 +101,7 @@ class EntitySnapshot {
       scale: scale.clone(),
       size: size.clone(),
     ),
-    visual: VisualData(color: color),
+    visual: VisualData(color: color, shaderId: shaderId, videoPath: videoPath),
     customProperties: Map<String, dynamic>.of(customProperties),
     parts: parts?.map((p) => p.toPart()).toList(),
     layer: layer,

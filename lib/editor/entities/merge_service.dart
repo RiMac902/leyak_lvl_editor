@@ -46,6 +46,7 @@ class MergeService {
             size: entity.transform.size.clone(),
             color: entity.visual.color,
             shaderId: entity.visual.shaderId,
+            videoPath: entity.visual.videoPath,
           ),
         )
         .toList();

@@ -81,6 +81,45 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Призначає (чи знімає, якщо [shaderId] == null) кастомний шейдер
+  /// одному [EntityPart].
+  void setPartShader(LevelEntity entity, int partIndex, String? shaderId) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].shaderId = shaderId;
+    refresh();
+  }
+
+  /// Те саме, що [setPartShader], але для звичайної (не складеної)
+  /// сутності — на її єдиному "шматку", [VisualData].
+  void setEntityShader(LevelEntity entity, String? shaderId) {
+    _history.checkpoint();
+    entity.visual.shaderId = shaderId;
+    refresh();
+  }
+
+  /// Призначає (чи знімає, якщо [path] == null) шлях до відео-файлу, кадри
+  /// якого подаються як текстура шейдерам, що цього потребують — див.
+  /// [ShaderCatalog.needsTexture]. [EntityComponent] сам підхопить/звільнить
+  /// відповідний [VideoTextureManager] на наступному кадрі.
+  void setPartVideo(LevelEntity entity, int partIndex, String? path) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].videoPath = path;
+    refresh();
+  }
+
+  /// Те саме, що [setPartVideo], але для звичайної (не складеної) сутності.
+  void setEntityVideo(LevelEntity entity, String? path) {
+    _history.checkpoint();
+    entity.visual.videoPath = path;
+    refresh();
+  }
+
   void deleteEntity(LevelEntity entity) {
     if (entity.isLocked) return;
 

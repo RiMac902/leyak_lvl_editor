@@ -11,13 +11,18 @@ class EntityPart {
     required this.size,
     required this.color,
     this.shaderId,
+    this.videoPath,
   });
 
   Vector2 relativePosition;
   Vector2 size;
   Color color;
 
-  /// Заготовка під майбутній рендер кастомним шейдером per-part. Це поле
-  /// НЕ підключене до рендеру — так само, як [VisualData.shaderId] сьогодні.
+  /// Кастомний фрагмент-шейдер для цієї частини — див. [ShaderCatalog].
   String? shaderId;
+
+  /// Шлях до відеофайлу, кадри якого подаються як текстура шейдеру, що
+  /// цього потребує ([ShaderCatalog.needsTexture]). Ігнорується шейдерами,
+  /// яким текстура не потрібна.
+  String? videoPath;
 }

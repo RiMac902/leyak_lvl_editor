@@ -45,6 +45,7 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   flutter_colorpicker: ^1.1.0
+  video_player: ^2.10.0
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +71,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  shaders:
+    - assets/shaders/blurry_glass.frag
+    - assets/shaders/halftone_triangle.frag
+    - assets/shaders/warp_fbm.frag
+
+  assets:
+    - assets/videos/sample.mov
 
   # To add assets to your application, add an assets section, like this:
   # assets:

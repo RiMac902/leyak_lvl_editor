@@ -1,11 +1,14 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:leyak_lvl_editor/code/di/injection.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
+import 'package:leyak_lvl_editor/editor/video/video_texture_manager.dart';
 import 'package:leyak_lvl_editor/ui/widgets/hud_notification.dart';
 import 'package:leyak_lvl_editor/ui/widgets/inspector_panel.dart';
 import 'package:leyak_lvl_editor/ui/widgets/layers_panel.dart';
+import 'package:leyak_lvl_editor/ui/widgets/video_texture_host.dart';
 
 class LevelEditorScreen extends StatefulWidget {
   const LevelEditorScreen({super.key});
@@ -54,6 +57,7 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
             ),
             const LayersPanel(),
             const InspectorPanel(),
+            VideoTextureHost(manager: getIt<VideoTextureManager>()),
           ],
         ),
       ),

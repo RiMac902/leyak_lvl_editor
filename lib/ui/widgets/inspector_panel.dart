@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:leyak_lvl_editor/code/di/injection.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
+import 'package:leyak_lvl_editor/editor/rendering/shader_catalog.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
 
@@ -106,6 +109,25 @@ class _EntityEditor extends StatelessWidget {
             color: entity.visual.color,
             onColorPicked: (color) => context.read<SceneCubit>().setEntityColor(entity, color),
           ),
+          const SizedBox(height: 4),
+          _OpacitySlider(
+            color: entity.visual.color,
+            onChanged: (color) => context.read<SceneCubit>().setEntityColor(entity, color),
+          ),
+          const SizedBox(height: 8),
+          const Text('Shader', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 4),
+          _ShaderPickerDropdown(
+            shaderId: entity.visual.shaderId,
+            onChanged: (id) => context.read<SceneCubit>().setEntityShader(entity, id),
+          ),
+          if (getIt<ShaderCatalog>().needsTexture(entity.visual.shaderId)) ...[
+            const SizedBox(height: 4),
+            _VideoPickerButton(
+              videoPath: entity.visual.videoPath,
+              onPicked: (path) => context.read<SceneCubit>().setEntityVideo(entity, path),
+            ),
+          ],
         ],
         if (entity.customProperties.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -201,6 +223,47 @@ class _ColorPickerButton extends StatelessWidget {
   }
 }
 
+/// Слайдер прозорості кольору — окремо від повного [ColorPicker], бо
+/// прозорість об'єкта хочеться крутити швидко/пробно, не відкриваючи щоразу
+/// повний діалог. Змінює лише альфа-канал, RGB лишає незмінним.
+class _OpacitySlider extends StatelessWidget {
+  const _OpacitySlider({required this.color, required this.onChanged});
+
+  final Color color;
+  final ValueChanged<Color> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(
+          width: 46,
+          child: Text('Opacity', style: TextStyle(color: Colors.white54, fontSize: 11)),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            ),
+            child: Slider(
+              value: color.a,
+              onChanged: (v) => onChanged(color.withValues(alpha: v)),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 32,
+          child: Text(
+            '${(color.a * 100).round()}%',
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Список частин складеної (compound) сутності — по одному кольоровому
 /// свотчу на [EntityPart], аналог редагування fill окремого `<rect>` в
 /// SVG-групі. Показується в [_EntityEditor] замість одного цілісного
@@ -220,14 +283,103 @@ class _PartsEditor extends StatelessWidget {
         Text('Parts (${parts.length})', style: const TextStyle(color: Colors.white54, fontSize: 12)),
         const SizedBox(height: 4),
         for (var i = 0; i < parts.length; i++) ...[
-          _ColorPickerButton(
-            color: parts[i].color,
-            label: 'Part $i',
-            onColorPicked: (color) => cubit.setPartColor(entity, i, color),
+          Row(
+            children: [
+              Expanded(
+                child: _ColorPickerButton(
+                  color: parts[i].color,
+                  label: 'Part $i',
+                  onColorPicked: (color) => cubit.setPartColor(entity, i, color),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _ShaderPickerDropdown(
+                shaderId: parts[i].shaderId,
+                onChanged: (id) => cubit.setPartShader(entity, i, id),
+              ),
+            ],
           ),
-          if (i != parts.length - 1) const SizedBox(height: 4),
+          _OpacitySlider(
+            color: parts[i].color,
+            onChanged: (color) => cubit.setPartColor(entity, i, color),
+          ),
+          if (getIt<ShaderCatalog>().needsTexture(parts[i].shaderId)) ...[
+            const SizedBox(height: 4),
+            _VideoPickerButton(
+              videoPath: parts[i].videoPath,
+              onPicked: (path) => cubit.setPartVideo(entity, i, path),
+            ),
+          ],
+          if (i != parts.length - 1) const SizedBox(height: 6),
         ],
       ],
+    );
+  }
+}
+
+/// Дропдаун вибору кастомного шейдера з [ShaderCatalog] — `None` знімає
+/// шейдер і повертає звичайну заливку суцільним кольором.
+class _ShaderPickerDropdown extends StatelessWidget {
+  const _ShaderPickerDropdown({required this.shaderId, required this.onChanged});
+
+  final String? shaderId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = getIt<ShaderCatalog>().availableShaderIds;
+    return DropdownButton<String?>(
+      value: shaderId,
+      isDense: true,
+      dropdownColor: const Color(0xFF2A2A2A),
+      style: const TextStyle(color: Colors.white, fontSize: 12),
+      underline: const SizedBox.shrink(),
+      items: [
+        const DropdownMenuItem<String?>(value: null, child: Text('None')),
+        for (final id in options) DropdownMenuItem<String?>(value: id, child: Text(id)),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+/// Кнопка вибору відеофайлу для шейдера, що потребує текстури (див.
+/// [ShaderCatalog.needsTexture]) — показується умовно, поруч із
+/// [_ShaderPickerDropdown]. Кадри вибраного відео подаються в шейдер через
+/// [VideoTextureManager]/[VideoTextureHost].
+class _VideoPickerButton extends StatelessWidget {
+  const _VideoPickerButton({required this.videoPath, required this.onPicked});
+
+  final String? videoPath;
+  final ValueChanged<String?> onPicked;
+
+  Future<void> _pick() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['mp4', 'mov', 'm4v', 'webm'],
+    );
+    final path = result?.files.single.path;
+    if (path != null) onPicked(path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fileName = videoPath == null ? 'No video' : videoPath!.split('/').last;
+    return InkWell(
+      onTap: _pick,
+      child: Row(
+        children: [
+          const Icon(Icons.movie_outlined, size: 14, color: Colors.white54),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              fileName,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
