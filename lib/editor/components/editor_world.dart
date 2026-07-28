@@ -5,8 +5,12 @@ import 'package:leyak_lvl_editor/editor/components/grid_component.dart';
 import 'package:leyak_lvl_editor/editor/components/object_manager.dart';
 import 'package:leyak_lvl_editor/editor/controllers/editor_mode_controller.dart';
 import 'package:leyak_lvl_editor/editor/controllers/grid_snap_controller.dart';
+import 'package:leyak_lvl_editor/editor/input/delete_shortcut.dart';
+import 'package:leyak_lvl_editor/editor/input/duplicate_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/editor_keyboard_shortcuts.dart';
 import 'package:leyak_lvl_editor/editor/input/grid_snap_shortcut.dart';
+import 'package:leyak_lvl_editor/editor/input/group_shortcut.dart';
+import 'package:leyak_lvl_editor/editor/input/undo_redo_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
 import 'package:leyak_lvl_editor/editor/overlays/notification_controller.dart';
@@ -23,6 +27,10 @@ class EditorWorld extends World
   final GridSnapController snapController = GridSnapController();
 
   final EditorKeyboardShortcuts _modeShortcuts = const EditorKeyboardShortcuts();
+  final GroupShortcut _groupShortcut = const GroupShortcut();
+  final DeleteShortcut _deleteShortcut = const DeleteShortcut();
+  final DuplicateShortcut _duplicateShortcut = const DuplicateShortcut();
+  final UndoRedoShortcut _undoRedoShortcut = const UndoRedoShortcut();
   final GridSnapShortcut _snapShortcut = const GridSnapShortcut();
 
   Vector2? currentPointerPos;
@@ -78,8 +86,44 @@ class EditorWorld extends World
       return true;
     }
 
+    // Має йти РАНІШЕ за [_snapShortcut]: той реагує на будь-яке натискання
+    // G незалежно від модифікаторів, тож Ctrl+G інакше додатково перемкнув
+    // би ще й snap-to-grid.
+    final groupAction = _groupShortcut.resolve(event, keysPressed);
+    if (groupAction != null) {
+      final didApply = switch (groupAction) {
+        GroupShortcutAction.group => objectManager.groupSelection(),
+        GroupShortcutAction.ungroup => objectManager.ungroupSelection(),
+      };
+      if (didApply) {
+        _notification.show(groupAction == GroupShortcutAction.group ? 'GROUPED' : 'UNGROUPED');
+      }
+      return true;
+    }
+
     if (_snapShortcut.isToggle(event)) {
       snapController.toggle();
+      return true;
+    }
+
+    final undoRedoAction = _undoRedoShortcut.resolve(event, keysPressed);
+    if (undoRedoAction != null) {
+      switch (undoRedoAction) {
+        case UndoRedoAction.undo:
+          objectManager.undo();
+        case UndoRedoAction.redo:
+          objectManager.redo();
+      }
+      return true;
+    }
+
+    if (_duplicateShortcut.isTrigger(event, keysPressed)) {
+      objectManager.duplicateSelection();
+      return true;
+    }
+
+    if (_deleteShortcut.isTrigger(event)) {
+      objectManager.deleteSelection();
       return true;
     }
 

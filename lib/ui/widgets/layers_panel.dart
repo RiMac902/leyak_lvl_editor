@@ -95,7 +95,43 @@ class _LayerRow extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
           ),
+          if (entity.groupId != null) ...[
+            _GroupBadge(groupId: entity.groupId!),
+            const SizedBox(width: 6),
+          ],
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white54),
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
+            splashRadius: 14,
+            onPressed: () => context.read<SceneCubit>().deleteEntity(entity),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Значок постійної групи — колір визначається детерміновано з [groupId],
+/// щоб у списку було видно, які фігури належать до однієї групи, а які —
+/// до різних, без потреби показувати сам ідентифікатор.
+class _GroupBadge extends StatelessWidget {
+  const _GroupBadge({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context) {
+    final hue = (groupId.hashCode % 360).toDouble();
+    return Tooltip(
+      message: 'Group $groupId',
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: HSLColor.fromAHSL(1, hue, 0.6, 0.5).toColor(),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

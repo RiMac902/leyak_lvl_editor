@@ -15,6 +15,11 @@ class DrawTool implements EditorTool {
   final EntityRepository _repository;
   final GridCoordinateConverter _converter;
 
+  /// Викликається безпосередньо перед тим, як нова сутність потрапляє в
+  /// репозиторій — композиційний корінь підключає сюди
+  /// [HistoryController.checkpoint], щоб малювання можна було скасувати.
+  void Function()? beforeCommit;
+
   Vector2? _startCell;
   Vector2? origin;
   LevelEntity? entity;
@@ -47,6 +52,7 @@ class DrawTool implements EditorTool {
   @override
   void dragEnd() {
     if (entity != null) {
+      beforeCommit?.call();
       _repository.add(entity!);
     }
     _startCell = null;

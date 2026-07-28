@@ -1,7 +1,11 @@
+import 'dart:math' as math;
+
+import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
+import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
 
@@ -38,7 +42,7 @@ class InspectorPanel extends StatelessWidget {
               const Divider(height: 1, color: Colors.white24),
               const SizedBox(height: 8),
               BlocBuilder<SceneCubit, SceneState>(
-                builder: (context, state) => _buildContent(state.selected),
+                builder: (context, state) => _buildContent(context, state.selected),
               ),
             ],
           ),
@@ -47,10 +51,16 @@ class InspectorPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(List<LevelEntity> selected) {
+  Widget _buildContent(BuildContext context, List<LevelEntity> selected) {
     if (selected.isEmpty) {
       return const Text('No selection', style: TextStyle(color: Colors.white38));
     }
+
+    final group = context.read<SceneCubit>().fullGroupSelectionOf(selected);
+    if (group != null) {
+      return _GroupEditor(group: group, memberCount: selected.length);
+    }
+
     if (selected.length > 1) {
       return Text(
         '${selected.length} shapes selected',
@@ -78,6 +88,14 @@ class _EntityEditor extends StatelessWidget {
           '${transform.position.x.toInt()}, ${transform.position.y.toInt()}',
         ),
         _PropertyRow('size', '${transform.size.x.toInt()} x ${transform.size.y.toInt()}'),
+        const SizedBox(height: 12),
+        _TransformFields(
+          rotationRadians: transform.rotation,
+          scale: transform.scale,
+          onRotationChanged: (radians) =>
+              context.read<SceneCubit>().setEntityRotation(entity, radians),
+          onScaleChanged: (scale) => context.read<SceneCubit>().setEntityScale(entity, scale),
+        ),
         const SizedBox(height: 12),
         const Text('Color', style: TextStyle(color: Colors.white54, fontSize: 12)),
         const SizedBox(height: 4),
@@ -169,6 +187,147 @@ class _ColorPickerButton extends StatelessWidget {
           const Text('Change color', style: TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+/// Редактор постійної групи — та сама пара обертання/масштаб, що й для
+/// однієї сутності, але прив'язана до [LevelGroup]. Показується в
+/// Inspector замість "N shapes selected", коли виділення — рівно повний
+/// склад однієї групи (див. [SceneCubit.fullGroupSelectionOf]).
+class _GroupEditor extends StatelessWidget {
+  const _GroupEditor({required this.group, required this.memberCount});
+
+  final LevelGroup group;
+  final int memberCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SceneCubit>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PropertyRow('group', '$memberCount shapes'),
+        const SizedBox(height: 12),
+        _TransformFields(
+          rotationRadians: group.rotation,
+          scale: group.scale,
+          onRotationChanged: (radians) => cubit.setGroupRotation(group, radians),
+          onScaleChanged: (scale) => cubit.setGroupScale(group, scale),
+        ),
+      ],
+    );
+  }
+}
+
+/// Пара полів "обертання (у градусах) + масштаб X/Y", спільна для
+/// [_EntityEditor] і [_GroupEditor]. Значення можуть змінюватись ззовні
+/// (перетягуванням гізмо-хендлів на канвасі), тому поля введення —
+/// [_NumberField], а не звичайний [TextField].
+class _TransformFields extends StatelessWidget {
+  const _TransformFields({
+    required this.rotationRadians,
+    required this.scale,
+    required this.onRotationChanged,
+    required this.onScaleChanged,
+  });
+
+  final double rotationRadians;
+  final Vector2 scale;
+  final ValueChanged<double> onRotationChanged;
+  final ValueChanged<Vector2> onScaleChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Rotation (°)', style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 4),
+        _NumberField(
+          value: rotationRadians * 180 / math.pi,
+          onChanged: (degrees) => onRotationChanged(degrees * math.pi / 180),
+        ),
+        const SizedBox(height: 8),
+        const Text('Scale', style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: _NumberField(
+                value: scale.x,
+                onChanged: (v) => onScaleChanged(Vector2(v, scale.y)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _NumberField(
+                value: scale.y,
+                onChanged: (v) => onScaleChanged(Vector2(scale.x, v)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Текстове поле для числового значення, яке може мінятись і ззовні
+/// (drag гізмо). Показане значення оновлюється з [value] лише коли поле
+/// не в фокусі — інакше введення користувача перезаписувалось би щокадру.
+class _NumberField extends StatefulWidget {
+  const _NumberField({required this.value, required this.onChanged});
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  State<_NumberField> createState() => _NumberFieldState();
+}
+
+class _NumberFieldState extends State<_NumberField> {
+  late final TextEditingController _controller = TextEditingController(
+    text: _format(widget.value),
+  );
+  final FocusNode _focusNode = FocusNode();
+
+  String _format(double value) => value.toStringAsFixed(1);
+
+  @override
+  void didUpdateWidget(covariant _NumberField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && oldWidget.value != widget.value) {
+      _controller.text = _format(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final parsed = double.tryParse(_controller.text);
+    if (parsed != null) widget.onChanged(parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      style: const TextStyle(color: Colors.white, fontSize: 12),
+      decoration: const InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        border: OutlineInputBorder(),
+      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+      onSubmitted: (_) => _submit(),
+      onEditingComplete: _submit,
     );
   }
 }
