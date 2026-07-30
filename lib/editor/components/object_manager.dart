@@ -181,6 +181,7 @@ class ObjectManager extends Component
           spritePath: entity.visual.spritePath,
           shaderId: entity.visual.shaderId,
           videoPath: entity.visual.videoPath,
+          shaderParams: Map<String, Object>.of(entity.visual.shaderParams),
         ),
         customProperties: Map<String, dynamic>.of(entity.customProperties),
         parts: entity.parts
@@ -193,6 +194,7 @@ class ObjectManager extends Component
                 shapeStyle: part.shapeStyle.clone(),
                 shaderId: part.shaderId,
                 videoPath: part.videoPath,
+                shaderParams: Map<String, Object>.of(part.shaderParams),
               ),
             )
             .toList(),

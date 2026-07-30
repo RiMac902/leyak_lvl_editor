@@ -13,26 +13,26 @@ import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
 /// Знімок [ShapeStyle].
 class ShapeStyleSnapshot {
   ShapeStyleSnapshot._({
-    required this.cornerRadius,
+    required this.cornerRadii,
     required this.lineThickness,
     required this.lineStart,
     required this.lineEnd,
   });
 
   factory ShapeStyleSnapshot.of(ShapeStyle style) => ShapeStyleSnapshot._(
-    cornerRadius: style.cornerRadius,
+    cornerRadii: List<double>.of(style.cornerRadii),
     lineThickness: style.lineThickness,
     lineStart: style.lineStart.clone(),
     lineEnd: style.lineEnd.clone(),
   );
 
-  final double cornerRadius;
+  final List<double> cornerRadii;
   final double lineThickness;
   final Vector2 lineStart;
   final Vector2 lineEnd;
 
   ShapeStyle toStyle() => ShapeStyle(
-    cornerRadius: cornerRadius,
+    cornerRadii: List<double>.of(cornerRadii),
     lineThickness: lineThickness,
     lineStart: lineStart.clone(),
     lineEnd: lineEnd.clone(),
@@ -49,6 +49,7 @@ class EntityPartSnapshot {
     required this.shapeStyle,
     required this.shaderId,
     required this.videoPath,
+    required this.shaderParams,
   });
 
   factory EntityPartSnapshot.of(EntityPart part) => EntityPartSnapshot._(
@@ -59,6 +60,7 @@ class EntityPartSnapshot {
     shapeStyle: ShapeStyleSnapshot.of(part.shapeStyle),
     shaderId: part.shaderId,
     videoPath: part.videoPath,
+    shaderParams: Map<String, Object>.of(part.shaderParams),
   );
 
   final Vector2 relativePosition;
@@ -68,6 +70,7 @@ class EntityPartSnapshot {
   final ShapeStyleSnapshot shapeStyle;
   final String? shaderId;
   final String? videoPath;
+  final Map<String, Object> shaderParams;
 
   EntityPart toPart() => EntityPart(
     relativePosition: relativePosition.clone(),
@@ -77,6 +80,7 @@ class EntityPartSnapshot {
     shapeStyle: shapeStyle.toStyle(),
     shaderId: shaderId,
     videoPath: videoPath,
+    shaderParams: Map<String, Object>.of(shaderParams),
   );
 }
 
@@ -94,6 +98,7 @@ class EntitySnapshot {
     required this.shapeStyle,
     required this.shaderId,
     required this.videoPath,
+    required this.shaderParams,
     required this.customProperties,
     required this.parts,
     required this.layer,
@@ -113,6 +118,7 @@ class EntitySnapshot {
     shapeStyle: ShapeStyleSnapshot.of(entity.shapeStyle),
     shaderId: entity.visual.shaderId,
     videoPath: entity.visual.videoPath,
+    shaderParams: Map<String, Object>.of(entity.visual.shaderParams),
     customProperties: Map<String, dynamic>.of(entity.customProperties),
     parts: entity.parts?.map(EntityPartSnapshot.of).toList(),
     layer: entity.layer,
@@ -131,6 +137,7 @@ class EntitySnapshot {
   final ShapeStyleSnapshot shapeStyle;
   final String? shaderId;
   final String? videoPath;
+  final Map<String, Object> shaderParams;
   final Map<String, dynamic> customProperties;
   final List<EntityPartSnapshot>? parts;
   final int layer;
@@ -146,7 +153,12 @@ class EntitySnapshot {
       scale: scale.clone(),
       size: size.clone(),
     ),
-    visual: VisualData(color: color, shaderId: shaderId, videoPath: videoPath),
+    visual: VisualData(
+      color: color,
+      shaderId: shaderId,
+      videoPath: videoPath,
+      shaderParams: Map<String, Object>.of(shaderParams),
+    ),
     shapeType: shapeType,
     shapeStyle: shapeStyle.toStyle(),
     customProperties: Map<String, dynamic>.of(customProperties),

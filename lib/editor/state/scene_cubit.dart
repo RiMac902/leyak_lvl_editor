@@ -135,6 +135,25 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Змінює значення одного налаштовуваного параметра поточного шейдера
+  /// сутності (напр. колір/товщина "контуру" в `ring_glow`) — див.
+  /// [ShaderCatalog.paramsFor].
+  void setEntityShaderParam(LevelEntity entity, String key, Object value) {
+    _history.checkpoint();
+    entity.visual.shaderParams[key] = value;
+    refresh();
+  }
+
+  /// Те саме, що [setEntityShaderParam], але для одного [EntityPart].
+  void setPartShaderParam(LevelEntity entity, int partIndex, String key, Object value) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].shaderParams[key] = value;
+    refresh();
+  }
+
   /// Призначає (чи знімає, якщо [path] == null) шлях до відео-файлу, кадри
   /// якого подаються як текстура шейдерам, що цього потребують — див.
   /// [ShaderCatalog.needsTexture]. [EntityComponent] сам підхопить/звільнить
@@ -155,20 +174,20 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
-  /// Радіус заокруглення кутів — застосовується лише коли
-  /// `shapeType == ShapeType.rectangle` (див. [ShapeStyle.cornerRadius]).
-  void setEntityCornerRadius(LevelEntity entity, double radius) {
+  /// Радіус заокруглення одного кута/кінця (за [index]) — сенс індексу
+  /// залежить від `shapeType`, див. [ShapeStyle.cornerRadii].
+  void setEntityCornerRadius(LevelEntity entity, int index, double radius) {
     _history.checkpoint();
-    entity.shapeStyle.cornerRadius = radius;
+    entity.shapeStyle.cornerRadii[index] = radius;
     refresh();
   }
 
-  void setPartCornerRadius(LevelEntity entity, int partIndex, double radius) {
+  void setPartCornerRadius(LevelEntity entity, int partIndex, int index, double radius) {
     final parts = entity.parts;
     if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
 
     _history.checkpoint();
-    parts[partIndex].shapeStyle.cornerRadius = radius;
+    parts[partIndex].shapeStyle.cornerRadii[index] = radius;
     refresh();
   }
 

@@ -135,6 +135,7 @@ class EntityComponent extends PositionComponent
           part.color,
           part.shaderId,
           part.videoPath,
+          part.shaderParams,
           part.shapeType,
           part.shapeStyle,
           tileSize,
@@ -147,6 +148,7 @@ class EntityComponent extends PositionComponent
         entity.visual.color,
         entity.visual.shaderId,
         entity.visual.videoPath,
+        entity.visual.shaderParams,
         entity.shapeType,
         entity.shapeStyle,
         game.tileSize,
@@ -185,6 +187,7 @@ class EntityComponent extends PositionComponent
     Color color,
     String? shaderId,
     String? videoPath,
+    Map<String, Object> shaderParams,
     ShapeType shapeType,
     ShapeStyle shapeStyle,
     double tileSize,
@@ -193,6 +196,12 @@ class EntityComponent extends PositionComponent
     canvas.drawPath(path, Paint()..color = color);
 
     final catalog = getIt<ShaderCatalog>();
+
+    if (catalog.renderModeFor(shaderId) == ShaderRenderMode.glowOutline) {
+      _drawGlowOutline(canvas, path, catalog.paramsFor(shaderId), shaderParams);
+      return;
+    }
+
     final shader = catalog.shaderFor(shaderId);
     if (shader == null) return;
 
@@ -212,8 +221,22 @@ class EntityComponent extends PositionComponent
     shader
       ..setFloat(0, rect.width)
       ..setFloat(1, rect.height);
+    var nextFloatIndex = 2;
     if (catalog.needsTime(shaderId)) {
-      shader.setFloat(2, _elapsedTime);
+      shader.setFloat(nextFloatIndex++, _elapsedTime);
+    }
+    for (final spec in catalog.paramsFor(shaderId)) {
+      switch (spec.type) {
+        case ShaderParamType.number:
+          final value = (shaderParams[spec.key] as double?) ?? spec.defaultNumber;
+          shader.setFloat(nextFloatIndex++, value);
+        case ShaderParamType.color:
+          final paramColor = (shaderParams[spec.key] as Color?) ?? spec.defaultColor;
+          shader
+            ..setFloat(nextFloatIndex++, paramColor.r)
+            ..setFloat(nextFloatIndex++, paramColor.g)
+            ..setFloat(nextFloatIndex++, paramColor.b);
+      }
     }
 
     final image = _renderShaderImage(shader, rect.width, rect.height);
@@ -228,6 +251,42 @@ class EntityComponent extends PositionComponent
       Paint(),
     );
     canvas.restore();
+  }
+
+  /// Малює світний контур точно вздовж [path] (той самий контур, яким
+  /// намальована базова заливка) — на відміну від фрагмент-шейдера, це не
+  /// піксельний ефект, а реальне обведення форми ([Canvas.drawPath] зі
+  /// [PaintingStyle.stroke] + розмиття), тож автоматично точно збігається
+  /// з силуетом будь-якого [ShapeType] (прямокутник з довільним
+  /// cornerRadius, еліпс, трикутник, лінія) без окремої geometrії на кожен
+  /// тип фігури. Колір/товщину бере з перших параметрів відповідного типу
+  /// в [specs] (для `ring_glow` — 'color'/'width'), незалежно від
+  /// конкретних ключів.
+  void _drawGlowOutline(
+    Canvas canvas,
+    Path path,
+    List<ShaderParamSpec> specs,
+    Map<String, Object> shaderParams,
+  ) {
+    var color = const Color(0xFF18FFFF);
+    var width = 5.0;
+    for (final spec in specs) {
+      switch (spec.type) {
+        case ShaderParamType.color:
+          color = (shaderParams[spec.key] as Color?) ?? spec.defaultColor;
+        case ShaderParamType.number:
+          width = (shaderParams[spec.key] as double?) ?? spec.defaultNumber;
+      }
+    }
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, width),
+    );
   }
 
   Image? _renderShaderImage(FragmentShader shader, double width, double height) {

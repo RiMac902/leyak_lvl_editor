@@ -49,6 +49,7 @@ class MergeService {
             shapeStyle: entity.shapeStyle.clone(),
             shaderId: entity.visual.shaderId,
             videoPath: entity.visual.videoPath,
+            shaderParams: Map<String, Object>.of(entity.visual.shaderParams),
           ),
         )
         .toList();

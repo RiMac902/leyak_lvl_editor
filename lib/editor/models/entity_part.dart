@@ -16,7 +16,9 @@ class EntityPart {
     ShapeStyle? shapeStyle,
     this.shaderId,
     this.videoPath,
-  }) : shapeStyle = shapeStyle ?? ShapeStyle();
+    Map<String, Object>? shaderParams,
+  }) : shapeStyle = shapeStyle ?? ShapeStyle(),
+       shaderParams = shaderParams ?? {};
 
   Vector2 relativePosition;
   Vector2 size;
@@ -28,7 +30,11 @@ class EntityPart {
   String? shaderId;
 
   /// Шлях до відеофайлу, кадри якого подаються як текстура шейдеру, що
-  /// цього потребує ([ShaderCatalog.needsTexture]). Ігнорується шейдерами,
-  /// яким текстура не потрібна.
+  /// цього потребує ([ShaderCatalog.textureKindFor]). Ігнорується
+  /// шейдерами, яким текстура не потрібна.
   String? videoPath;
+
+  /// Значення налаштовуваних параметрів [shaderId] — див.
+  /// [VisualData.shaderParams].
+  Map<String, Object> shaderParams;
 }

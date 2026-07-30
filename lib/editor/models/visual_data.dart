@@ -9,5 +9,17 @@ class VisualData {
   String? videoPath;
   Color color;
 
-  VisualData({this.spritePath, this.shaderId, this.videoPath, this.color = Colors.grey});
+  /// Значення налаштовуваних параметрів поточного шейдера ([shaderId]) —
+  /// double для [ShaderParamType.number], [Color] для
+  /// [ShaderParamType.color], за ключем [ShaderParamSpec.key]. Див.
+  /// [EntityPart.shaderParams].
+  Map<String, Object> shaderParams;
+
+  VisualData({
+    this.spritePath,
+    this.shaderId,
+    this.videoPath,
+    this.color = Colors.grey,
+    Map<String, Object>? shaderParams,
+  }) : shaderParams = shaderParams ?? {};
 }

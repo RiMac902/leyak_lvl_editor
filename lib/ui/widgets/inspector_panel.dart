@@ -104,10 +104,10 @@ class _EntityEditor extends StatelessWidget {
         ),
         _ShapeStyleFields(
           shapeType: entity.shapeType,
-          cornerRadius: entity.shapeStyle.cornerRadius,
+          cornerRadii: entity.shapeStyle.cornerRadii,
           lineThickness: entity.shapeStyle.lineThickness,
-          onCornerRadiusChanged: (v) =>
-              context.read<SceneCubit>().setEntityCornerRadius(entity, v),
+          onCornerRadiusChanged: (index, v) =>
+              context.read<SceneCubit>().setEntityCornerRadius(entity, index, v),
           onLineThicknessChanged: (v) =>
               context.read<SceneCubit>().setEntityLineThickness(entity, v),
         ),
@@ -146,6 +146,12 @@ class _EntityEditor extends StatelessWidget {
             const SizedBox(height: 4),
             const _AudioTrackDropdown(),
           ],
+          _ShaderParamsEditor(
+            shaderId: entity.visual.shaderId,
+            params: entity.visual.shaderParams,
+            onChanged: (key, value) =>
+                context.read<SceneCubit>().setEntityShaderParam(entity, key, value),
+          ),
         ],
         if (entity.customProperties.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -334,11 +340,16 @@ class _PartsEditor extends StatelessWidget {
             const SizedBox(height: 4),
             const _AudioTrackDropdown(),
           ],
+          _ShaderParamsEditor(
+            shaderId: parts[i].shaderId,
+            params: parts[i].shaderParams,
+            onChanged: (key, value) => cubit.setPartShaderParam(entity, i, key, value),
+          ),
           _ShapeStyleFields(
             shapeType: parts[i].shapeType,
-            cornerRadius: parts[i].shapeStyle.cornerRadius,
+            cornerRadii: parts[i].shapeStyle.cornerRadii,
             lineThickness: parts[i].shapeStyle.lineThickness,
-            onCornerRadiusChanged: (v) => cubit.setPartCornerRadius(entity, i, v),
+            onCornerRadiusChanged: (index, v) => cubit.setPartCornerRadius(entity, i, index, v),
             onLineThicknessChanged: (v) => cubit.setPartLineThickness(entity, i, v),
           ),
           if (i != parts.length - 1) const SizedBox(height: 6),
@@ -355,47 +366,75 @@ class _PartsEditor extends StatelessWidget {
 class _ShapeStyleFields extends StatelessWidget {
   const _ShapeStyleFields({
     required this.shapeType,
-    required this.cornerRadius,
+    required this.cornerRadii,
     required this.lineThickness,
     required this.onCornerRadiusChanged,
     required this.onLineThicknessChanged,
   });
 
   final ShapeType shapeType;
-  final double cornerRadius;
+  final List<double> cornerRadii;
   final double lineThickness;
-  final ValueChanged<double> onCornerRadiusChanged;
+  final void Function(int index, double value) onCornerRadiusChanged;
   final ValueChanged<double> onLineThicknessChanged;
+
+  /// Підписи кутів/кінців за індексом [ShapeStyle.cornerRadii] — залежить
+  /// від [shapeType] (див. документацію поля).
+  static const _rectangleLabels = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
+  static const _triangleLabels = ['Top', 'Bottom-right', 'Bottom-left'];
+  static const _lineLabels = ['Start', 'End'];
 
   @override
   Widget build(BuildContext context) {
-    if (shapeType == ShapeType.rectangle) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Corner radius', style: TextStyle(color: Colors.white54, fontSize: 12)),
-            const SizedBox(height: 4),
-            _NumberField(value: cornerRadius, onChanged: onCornerRadiusChanged),
-          ],
-        ),
-      );
-    }
-    if (shapeType == ShapeType.line) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final labels = switch (shapeType) {
+      ShapeType.rectangle => _rectangleLabels,
+      ShapeType.triangle => _triangleLabels,
+      ShapeType.line => _lineLabels,
+      ShapeType.ellipse => const <String>[],
+    };
+
+    if (shapeType != ShapeType.line && labels.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (shapeType == ShapeType.line) ...[
             const Text('Line thickness', style: TextStyle(color: Colors.white54, fontSize: 12)),
             const SizedBox(height: 4),
             _NumberField(value: lineThickness, onChanged: onLineThicknessChanged),
+            const SizedBox(height: 8),
           ],
-        ),
-      );
-    }
-    return const SizedBox.shrink();
+          if (labels.isNotEmpty) ...[
+            const Text('Corner radius', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 4),
+            for (var i = 0; i < labels.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        labels[i],
+                        style: const TextStyle(color: Colors.white54, fontSize: 11),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 60,
+                      child: _NumberField(
+                        value: cornerRadii[i],
+                        onChanged: (v) => onCornerRadiusChanged(i, v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -514,6 +553,62 @@ class _AudioTrackDropdown extends StatelessWidget {
           ],
           onChanged: (path) => path == null ? manager.stop() : manager.play(path),
         );
+      },
+    );
+  }
+}
+
+/// Генерує контроли для налаштовуваних параметрів поточного шейдера
+/// ([ShaderCatalog.paramsFor]) — по одному [_ColorPickerButton] на
+/// [ShaderParamType.color] і підписаному [_NumberField] на
+/// [ShaderParamType.number]. Сам ховається ([SizedBox.shrink]), якщо в
+/// шейдера параметрів немає, тож його можна ставити безумовно одразу
+/// після відео/аудіо-дропдаунів — так само, як ті вже розміщені.
+class _ShaderParamsEditor extends StatelessWidget {
+  const _ShaderParamsEditor({required this.shaderId, required this.params, required this.onChanged});
+
+  final String? shaderId;
+  final Map<String, Object> params;
+  final void Function(String key, Object value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final specs = getIt<ShaderCatalog>().paramsFor(shaderId);
+    if (specs.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [for (final spec in specs) _buildControl(spec)],
+      ),
+    );
+  }
+
+  Widget _buildControl(ShaderParamSpec spec) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: switch (spec.type) {
+        ShaderParamType.color => _ColorPickerButton(
+          color: (params[spec.key] as Color?) ?? spec.defaultColor,
+          label: spec.label,
+          onColorPicked: (color) => onChanged(spec.key, color),
+        ),
+        ShaderParamType.number => Row(
+          children: [
+            SizedBox(
+              width: 70,
+              child: Text(spec.label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            ),
+            SizedBox(
+              width: 60,
+              child: _NumberField(
+                value: (params[spec.key] as double?) ?? spec.defaultNumber,
+                onChanged: (value) => onChanged(spec.key, value),
+              ),
+            ),
+          ],
+        ),
       },
     );
   }
