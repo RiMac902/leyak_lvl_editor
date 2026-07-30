@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/grouping_service.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_repository.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_service.dart';
 import 'package:leyak_lvl_editor/editor/geometry/scale_baking.dart';
 import 'package:leyak_lvl_editor/editor/history/history_controller.dart';
+import 'package:leyak_lvl_editor/editor/models/layer_folder.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
@@ -18,16 +21,70 @@ import 'package:leyak_lvl_editor/editor/tools/selection_tool.dart';
 /// [EntityRepository]/[SelectionTool] одноразові й не можуть мати двох
 /// незалежних підписників.
 class SceneCubit extends Cubit<SceneState> {
-  SceneCubit(this._repository, this._selectionTool, this._groupingService, this._history)
-    : super(const SceneState());
+  SceneCubit(
+    this._repository,
+    this._selectionTool,
+    this._groupingService,
+    this._history,
+    this._layerFolders,
+    this._layerFolderService,
+  ) : super(const SceneState());
 
   final EntityRepository _repository;
   final SelectionTool _selectionTool;
   final GroupingService _groupingService;
   final HistoryController _history;
+  final LayerFolderRepository _layerFolders;
+  final LayerFolderService _layerFolderService;
+
+  /// Останній рядок, клікнутий у Layers panel (звичайним кліком або
+  /// shift-кліком) — якір для [selectRangeInLayers], як в Explorer/Finder:
+  /// послідовні shift-кліки розширюють/звужують діапазон від того самого
+  /// початку, а не від щойно клікнутого рядка.
+  LevelEntity? _rangeAnchor;
 
   void refresh() {
-    emit(SceneState(entities: _repository.sortedByLayer, selected: List.of(_selectionTool.selected)));
+    emit(
+      SceneState(
+        entities: _repository.sortedByLayer,
+        selected: List.of(_selectionTool.selected),
+        folders: _layerFolders.all,
+      ),
+    );
+  }
+
+  /// Створює папку шарів (Layers panel) з [selected] — не плутати з
+  /// Ctrl+G ([GroupingService.groupEntities]): жодного зв'язку
+  /// трансформації, лише організація z-порядку. Повертає `null`, якщо
+  /// вибрано < 2 сутностей або хтось із них уже в папці.
+  LayerFolder? createLayerFolder(List<LevelEntity> selected, String name) {
+    if (selected.length < 2 || selected.any((e) => e.layerFolderId != null)) return null;
+
+    _history.checkpoint();
+    final folder = _layerFolderService.createFolder(selected, name);
+    refresh();
+    return folder;
+  }
+
+  /// Розпускає папку шарів — члени лишаються на своїх місцях у стеку,
+  /// стають звичайними верхньорівневими рядками в Layers panel.
+  void deleteLayerFolder(String folderId) {
+    _history.checkpoint();
+    _layerFolderService.deleteFolder(folderId);
+    refresh();
+  }
+
+  void renameLayerFolder(String folderId, String name) {
+    _history.checkpoint();
+    _layerFolderService.renameFolder(folderId, name);
+    refresh();
+  }
+
+  /// Згорнути/розгорнути папку в Layers panel — суто UI-стан, не
+  /// undo-варте (не викликає [HistoryController.checkpoint]).
+  void toggleFolderExpanded(String folderId) {
+    _layerFolderService.toggleExpanded(folderId);
+    refresh();
   }
 
   /// Виділяє [entity] (клік по рядку в Layers panel) — якщо вона в
@@ -36,10 +93,38 @@ class SceneCubit extends Cubit<SceneState> {
   void selectEntity(LevelEntity entity) {
     if (entity.isLocked) return;
 
+    _rangeAnchor = entity;
     final groupId = entity.groupId;
     _selectionTool.selected
       ..clear()
       ..addAll(groupId != null ? _repository.membersOf(groupId) : [entity]);
+    _selectionTool.onChanged?.call();
+  }
+
+  /// Shift-клік у Layers panel: виділяє весь діапазон рядків між останнім
+  /// клікнутим (якорем, [_rangeAnchor]) і [clicked] за ВИДИМИМ порядком
+  /// рядків панелі ([visibleOrder] — той самий список, що й показаний
+  /// користувачу, з урахуванням згорнутих/розгорнутих папок), як у
+  /// Windows Explorer/Finder. Якщо якоря ще нема (перший клік у сесії) чи
+  /// когось із двох не знайдено у [visibleOrder] — просто виділяє
+  /// [clicked], як звичайний клік. Заблоковані сутності в діапазоні
+  /// пропускаються.
+  void selectRangeInLayers(List<LevelEntity> visibleOrder, LevelEntity clicked) {
+    if (clicked.isLocked) return;
+
+    final anchor = _rangeAnchor;
+    final anchorIndex = anchor == null ? -1 : visibleOrder.indexOf(anchor);
+    final clickedIndex = visibleOrder.indexOf(clicked);
+    if (anchorIndex == -1 || clickedIndex == -1) {
+      selectEntity(clicked);
+      return;
+    }
+
+    final start = anchorIndex < clickedIndex ? anchorIndex : clickedIndex;
+    final end = anchorIndex < clickedIndex ? clickedIndex : anchorIndex;
+    _selectionTool.selected
+      ..clear()
+      ..addAll(visibleOrder.sublist(start, end + 1).where((e) => !e.isLocked));
     _selectionTool.onChanged?.call();
   }
 

@@ -23,6 +23,13 @@ class LevelEntity {
 
   int layer;
   String? groupId;
+
+  /// Папка в Layers panel, до якої належить ця сутність — див.
+  /// [LayerFolder]. Незалежна від [groupId]: сутність може бути одночасно
+  /// в Ctrl+G групі й у папці шарів, або лише в одному з них, або в
+  /// жодному.
+  String? layerFolderId;
+
   bool isVisible;
 
   /// Форма, якою малюється сутність (коли [parts] порожній) — вписана в
@@ -49,6 +56,7 @@ class LevelEntity {
     this.parts,
     this.layer = 0,
     this.groupId,
+    this.layerFolderId,
     this.shapeType = ShapeType.rectangle,
     ShapeStyle? shapeStyle,
     this.isVisible = true,

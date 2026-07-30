@@ -1,5 +1,6 @@
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_repository.dart';
 import 'package:leyak_lvl_editor/editor/history/scene_snapshot.dart';
 
 /// Єдина відповідальність — undo/redo для сцени, на рівні повних знімків
@@ -8,10 +9,11 @@ import 'package:leyak_lvl_editor/editor/history/scene_snapshot.dart';
 /// а миттєвий стрибок до попереднього стану, що для undo є очікуваною,
 /// а не гіршою поведінкою.
 class HistoryController {
-  HistoryController(this._entities, this._groups, {this.maxDepth = 100});
+  HistoryController(this._entities, this._groups, this._layerFolders, {this.maxDepth = 100});
 
   final EntityRepository _entities;
   final GroupRepository _groups;
+  final LayerFolderRepository _layerFolders;
   final int maxDepth;
 
   final List<SceneSnapshot> _undoStack = [];
@@ -24,21 +26,21 @@ class HistoryController {
   /// (не для кожного проміжного кадру драгу) — фіксує стан ДО цієї дії.
   /// Будь-яка дія після checkpoint скидає redo-історію, як і очікується.
   void checkpoint() {
-    _undoStack.add(SceneSnapshot.capture(_entities, _groups));
+    _undoStack.add(SceneSnapshot.capture(_entities, _groups, _layerFolders));
     if (_undoStack.length > maxDepth) _undoStack.removeAt(0);
     _redoStack.clear();
   }
 
   bool undo() {
     if (_undoStack.isEmpty) return false;
-    _redoStack.add(SceneSnapshot.capture(_entities, _groups));
+    _redoStack.add(SceneSnapshot.capture(_entities, _groups, _layerFolders));
     _restore(_undoStack.removeLast());
     return true;
   }
 
   bool redo() {
     if (_redoStack.isEmpty) return false;
-    _undoStack.add(SceneSnapshot.capture(_entities, _groups));
+    _undoStack.add(SceneSnapshot.capture(_entities, _groups, _layerFolders));
     _restore(_redoStack.removeLast());
     return true;
   }
@@ -46,9 +48,11 @@ class HistoryController {
   /// Порядок важливий: групи мають відновлюватись ПІСЛЯ сутностей, бо
   /// реперентинг [EntityComponent] під [GroupComponent] (реакція на
   /// [GroupRepository.onGroupAdded]) потребує, щоб компоненти сутностей вже
-  /// існували.
+  /// існували. [_layerFolders] порядок не важливий — жоден Flame-компонент
+  /// на нього не реагує.
   void _restore(SceneSnapshot snapshot) {
     _entities.replaceAll(snapshot.entities.map((e) => e.toEntity()).toList());
     _groups.replaceAll(snapshot.groups.map((g) => g.toGroup()).toList());
+    _layerFolders.replaceAll(snapshot.layerFolders.map((f) => f.toFolder()).toList());
   }
 }

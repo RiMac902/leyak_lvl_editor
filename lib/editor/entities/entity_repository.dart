@@ -67,6 +67,9 @@ class EntityRepository {
   List<LevelEntity> membersOf(String groupId) =>
       _entities.where((entity) => entity.groupId == groupId).toList();
 
+  List<LevelEntity> membersOfFolder(String folderId) =>
+      _entities.where((entity) => entity.layerFolderId == folderId).toList();
+
   /// Наступне вільне значення [LevelEntity.layer] — на 1 вище за
   /// найвищий наявний, щоб щойно намальована/здубльована/об'єднана
   /// сутність завжди опинялась зверху стека, а не позаду вже наявних.

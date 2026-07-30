@@ -7,6 +7,8 @@ import 'package:leyak_lvl_editor/editor/controllers/transform_gizmo_controller.d
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/grouping_service.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_repository.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_service.dart';
 import 'package:leyak_lvl_editor/editor/entities/merge_service.dart';
 import 'package:leyak_lvl_editor/editor/geometry/grid_coordinate_converter.dart';
 import 'package:leyak_lvl_editor/editor/history/history_controller.dart';
@@ -44,9 +46,16 @@ class ObjectManager extends Component
 
   late final GroupingService _groupingService = GroupingService(_repository, _groups);
 
+  late final LayerFolderRepository _layerFolders = LayerFolderRepository();
+
+  late final LayerFolderService _layerFolderService = LayerFolderService(
+    _repository,
+    _layerFolders,
+  );
+
   final MergeService _mergeService = const MergeService();
 
-  late final HistoryController _history = HistoryController(_repository, _groups);
+  late final HistoryController _history = HistoryController(_repository, _groups, _layerFolders);
 
   late final GridCoordinateConverter _converter = GridCoordinateConverter(
     () => game.tileSize,
@@ -72,6 +81,8 @@ class ObjectManager extends Component
     _selectionTool,
     _groupingService,
     _history,
+    _layerFolders,
+    _layerFolderService,
   );
 
   late final SceneComponentRegistry _registry = SceneComponentRegistry(

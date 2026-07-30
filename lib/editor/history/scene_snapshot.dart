@@ -2,7 +2,9 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
+import 'package:leyak_lvl_editor/editor/entities/layer_folder_repository.dart';
 import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
+import 'package:leyak_lvl_editor/editor/models/layer_folder.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
@@ -103,6 +105,7 @@ class EntitySnapshot {
     required this.parts,
     required this.layer,
     required this.groupId,
+    required this.layerFolderId,
     required this.isVisible,
     required this.isLocked,
   });
@@ -123,6 +126,7 @@ class EntitySnapshot {
     parts: entity.parts?.map(EntityPartSnapshot.of).toList(),
     layer: entity.layer,
     groupId: entity.groupId,
+    layerFolderId: entity.layerFolderId,
     isVisible: entity.isVisible,
     isLocked: entity.isLocked,
   );
@@ -142,6 +146,7 @@ class EntitySnapshot {
   final List<EntityPartSnapshot>? parts;
   final int layer;
   final String? groupId;
+  final String? layerFolderId;
   final bool isVisible;
   final bool isLocked;
 
@@ -165,6 +170,7 @@ class EntitySnapshot {
     parts: parts?.map((p) => p.toPart()).toList(),
     layer: layer,
     groupId: groupId,
+    layerFolderId: layerFolderId,
     isLocked: isLocked,
     isVisible: isVisible,
   );
@@ -195,16 +201,36 @@ class GroupSnapshot {
       LevelGroup(id: id, position: position.clone(), rotation: rotation, scale: scale.clone());
 }
 
+/// Знімок однієї [LayerFolder].
+class LayerFolderSnapshot {
+  LayerFolderSnapshot._({required this.id, required this.name, required this.isExpanded});
+
+  factory LayerFolderSnapshot.of(LayerFolder folder) =>
+      LayerFolderSnapshot._(id: folder.id, name: folder.name, isExpanded: folder.isExpanded);
+
+  final String id;
+  final String name;
+  final bool isExpanded;
+
+  LayerFolder toFolder() => LayerFolder(id: id, name: name, isExpanded: isExpanded);
+}
+
 /// Незалежний від Flame знімок усієї сцени в один момент часу — одиниця
 /// undo/redo-історії в [HistoryController].
 class SceneSnapshot {
-  SceneSnapshot._(this.entities, this.groups);
+  SceneSnapshot._(this.entities, this.groups, this.layerFolders);
 
-  factory SceneSnapshot.capture(EntityRepository entities, GroupRepository groups) => SceneSnapshot._(
+  factory SceneSnapshot.capture(
+    EntityRepository entities,
+    GroupRepository groups,
+    LayerFolderRepository layerFolders,
+  ) => SceneSnapshot._(
     entities.all.map(EntitySnapshot.of).toList(),
     groups.all.map(GroupSnapshot.of).toList(),
+    layerFolders.all.map(LayerFolderSnapshot.of).toList(),
   );
 
   final List<EntitySnapshot> entities;
   final List<GroupSnapshot> groups;
+  final List<LayerFolderSnapshot> layerFolders;
 }

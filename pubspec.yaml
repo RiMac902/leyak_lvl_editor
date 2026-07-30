@@ -77,6 +77,10 @@ flutter:
     - assets/shaders/halftone_triangle.frag
     - assets/shaders/warp_fbm.frag
     - assets/shaders/galaxy.frag
+    - assets/shaders/fx_shockwave.frag
+    - assets/shaders/fx_chromatic_aberration.frag
+    - assets/shaders/fx_glitch.frag
+    - assets/shaders/fx_pixelate.frag
 
   assets:
     - assets/videos/sample.mov
