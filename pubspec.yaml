@@ -76,9 +76,11 @@ flutter:
     - assets/shaders/blurry_glass.frag
     - assets/shaders/halftone_triangle.frag
     - assets/shaders/warp_fbm.frag
+    - assets/shaders/galaxy.frag
 
   assets:
     - assets/videos/sample.mov
+    - assets/audio/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

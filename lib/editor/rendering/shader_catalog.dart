@@ -1,18 +1,22 @@
 import 'dart:ui';
 
-/// Опис одного зареєстрованого шейдера: де лежить asset, чи потрібна йому
-/// текстура-семплер (тоді [EntityComponent] мусить дати їй кадр з
-/// [VideoTextureManager], а Inspector — показати кнопку вибору відео), і чи
-/// потрібен йому час (uTime) для анімації.
+/// Джерело текстури-семплера для шейдера, що її потребує: [video] — кадр з
+/// [VideoTextureManager] (за шляхом з [EntityPart.videoPath]/
+/// [VisualData.videoPath]), [audio] — спектр поточного треку з
+/// [AudioTextureManager] (єдиний спільний на всю сцену, не per-entity).
+enum ShaderTextureKind { none, video, audio }
+
+/// Опис одного зареєстрованого шейдера: де лежить asset, яку текстуру йому
+/// подавати (якщо взагалі), і чи потрібен йому час (uTime) для анімації.
 class ShaderDefinition {
   const ShaderDefinition({
     required this.assetPath,
-    required this.needsTexture,
+    this.textureKind = ShaderTextureKind.none,
     this.needsTime = false,
   });
 
   final String assetPath;
-  final bool needsTexture;
+  final ShaderTextureKind textureKind;
   final bool needsTime;
 }
 
@@ -22,17 +26,18 @@ class ShaderDefinition {
 /// нічого не робило). Дає [availableShaderIds] для UI-піка в Inspector.
 class ShaderCatalog {
   static const Map<String, ShaderDefinition> _definitions = {
-    'blurry_glass': ShaderDefinition(
-      assetPath: 'assets/shaders/blurry_glass.frag',
-      needsTexture: false,
-    ),
+    'blurry_glass': ShaderDefinition(assetPath: 'assets/shaders/blurry_glass.frag'),
     'halftone_triangle': ShaderDefinition(
       assetPath: 'assets/shaders/halftone_triangle.frag',
-      needsTexture: true,
+      textureKind: ShaderTextureKind.video,
     ),
     'warp_fbm': ShaderDefinition(
       assetPath: 'assets/shaders/warp_fbm.frag',
-      needsTexture: false,
+      needsTime: true,
+    ),
+    'galaxy': ShaderDefinition(
+      assetPath: 'assets/shaders/galaxy.frag',
+      textureKind: ShaderTextureKind.audio,
       needsTime: true,
     ),
   };
@@ -41,7 +46,8 @@ class ShaderCatalog {
 
   List<String> get availableShaderIds => _definitions.keys.toList(growable: false);
 
-  bool needsTexture(String? shaderId) => _definitions[shaderId]?.needsTexture ?? false;
+  ShaderTextureKind textureKindFor(String? shaderId) =>
+      _definitions[shaderId]?.textureKind ?? ShaderTextureKind.none;
 
   bool needsTime(String? shaderId) => _definitions[shaderId]?.needsTime ?? false;
 

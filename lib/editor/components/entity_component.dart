@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:leyak_lvl_editor/code/di/injection.dart';
 import 'package:leyak_lvl_editor/editor/animation/position_smoothing.dart';
+import 'package:leyak_lvl_editor/editor/audio/audio_texture_manager.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
@@ -167,10 +168,11 @@ class EntityComponent extends PositionComponent
   /// шейдер поверх неї (не замінює колір, а компонується над ним, як
   /// напівпрозора плівка), кліпуючи його тим самим контуром форми, щоб
   /// накладення не "вилазило" за межі не-прямокутних форм. Якщо шейдер
-  /// потребує текстури ([ShaderCatalog.needsTexture]), бере поточний кадр
-  /// відео за [videoPath] з [VideoTextureManager] — якщо кадру ще нема
-  /// (відео не задане чи ще завантажується), тихо пропускає шейдер і
-  /// лишає просто базовий колір, а не падає/блокується.
+  /// потребує текстури ([ShaderCatalog.textureKindFor]), бере поточний кадр
+  /// відео за [videoPath] з [VideoTextureManager] чи поточний спектр треку
+  /// з [AudioTextureManager] — якщо кадру ще нема (джерело не задане чи ще
+  /// завантажується), тихо пропускає шейдер і лишає просто базовий колір,
+  /// а не падає/блокується.
   ///
   /// Шейдер рендериться в окреме off-screen зображення точного розміру
   /// [rect], а не напряму на вже трансформований канвас — інакше координати
@@ -194,10 +196,17 @@ class EntityComponent extends PositionComponent
     final shader = catalog.shaderFor(shaderId);
     if (shader == null) return;
 
-    if (catalog.needsTexture(shaderId)) {
-      final frame = getIt<VideoTextureManager>().frameFor(videoPath);
-      if (frame == null) return;
-      shader.setImageSampler(0, frame);
+    switch (catalog.textureKindFor(shaderId)) {
+      case ShaderTextureKind.video:
+        final frame = getIt<VideoTextureManager>().frameFor(videoPath);
+        if (frame == null) return;
+        shader.setImageSampler(0, frame);
+      case ShaderTextureKind.audio:
+        final frame = getIt<AudioTextureManager>().currentFrame;
+        if (frame == null) return;
+        shader.setImageSampler(0, frame);
+      case ShaderTextureKind.none:
+        break;
     }
 
     shader

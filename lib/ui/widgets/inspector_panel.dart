@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:leyak_lvl_editor/code/di/injection.dart';
+import 'package:leyak_lvl_editor/editor/audio/audio_asset_catalog.dart';
+import 'package:leyak_lvl_editor/editor/audio/audio_texture_manager.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
 import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
@@ -131,12 +133,18 @@ class _EntityEditor extends StatelessWidget {
             shaderId: entity.visual.shaderId,
             onChanged: (id) => context.read<SceneCubit>().setEntityShader(entity, id),
           ),
-          if (getIt<ShaderCatalog>().needsTexture(entity.visual.shaderId)) ...[
+          if (getIt<ShaderCatalog>().textureKindFor(entity.visual.shaderId) ==
+              ShaderTextureKind.video) ...[
             const SizedBox(height: 4),
             _VideoAssetDropdown(
               videoPath: entity.visual.videoPath,
               onChanged: (path) => context.read<SceneCubit>().setEntityVideo(entity, path),
             ),
+          ],
+          if (getIt<ShaderCatalog>().textureKindFor(entity.visual.shaderId) ==
+              ShaderTextureKind.audio) ...[
+            const SizedBox(height: 4),
+            const _AudioTrackDropdown(),
           ],
         ],
         if (entity.customProperties.isNotEmpty) ...[
@@ -313,12 +321,18 @@ class _PartsEditor extends StatelessWidget {
             color: parts[i].color,
             onChanged: (color) => cubit.setPartColor(entity, i, color),
           ),
-          if (getIt<ShaderCatalog>().needsTexture(parts[i].shaderId)) ...[
+          if (getIt<ShaderCatalog>().textureKindFor(parts[i].shaderId) ==
+              ShaderTextureKind.video) ...[
             const SizedBox(height: 4),
             _VideoAssetDropdown(
               videoPath: parts[i].videoPath,
               onChanged: (path) => cubit.setPartVideo(entity, i, path),
             ),
+          ],
+          if (getIt<ShaderCatalog>().textureKindFor(parts[i].shaderId) ==
+              ShaderTextureKind.audio) ...[
+            const SizedBox(height: 4),
+            const _AudioTrackDropdown(),
           ],
           _ShapeStyleFields(
             shapeType: parts[i].shapeType,
@@ -411,8 +425,8 @@ class _ShaderPickerDropdown extends StatelessWidget {
   }
 }
 
-/// Дропдаун вибору відео для шейдера, що потребує текстури (див.
-/// [ShaderCatalog.needsTexture]) — показується умовно, поруч із
+/// Дропдаун вибору відео для шейдера, що потребує відео-текстури (див.
+/// [ShaderCatalog.textureKindFor]) — показується умовно, поруч із
 /// [_ShaderPickerDropdown]. Навмисно НЕ дає обирати довільний файл з диску
 /// (system file picker під macOS App Sandbox — зайвий головний біль з
 /// entitlements) — лише те, що реально вкладено в застосунок як asset,
@@ -452,6 +466,55 @@ class _VideoAssetDropdown extends StatelessWidget {
           ),
       ],
       onChanged: onChanged,
+    );
+  }
+}
+
+/// Дропдаун вибору музичного треку для шейдера, що потребує аудіо-текстури
+/// (див. [ShaderCatalog.textureKindFor]) — показується умовно, поруч із
+/// [_ShaderPickerDropdown], тим самим способом, що й [_VideoAssetDropdown].
+/// На відміну від відео (окремий файл на кожну частину/сутність), трек тут
+/// один спільний на всю сцену — тож дропдаун керує напряму
+/// [AudioTextureManager] через [getIt], а не через [SceneCubit]: який саме
+/// об'єкт/частина зараз показує цей дропдаун, впливає лише на те, чи він
+/// видимий, не на те, який трек грає.
+class _AudioTrackDropdown extends StatelessWidget {
+  const _AudioTrackDropdown();
+
+  @override
+  Widget build(BuildContext context) {
+    final manager = getIt<AudioTextureManager>();
+    final options = getIt<AudioAssetCatalog>().availablePaths;
+
+    if (options.isEmpty) {
+      return const Text(
+        'No tracks in assets/audio/',
+        style: TextStyle(color: Colors.white38, fontSize: 11),
+      );
+    }
+
+    return ValueListenableBuilder<String?>(
+      valueListenable: manager.currentPath,
+      builder: (context, currentPath, _) {
+        return DropdownButton<String?>(
+          value: options.contains(currentPath) ? currentPath : null,
+          isDense: true,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF2A2A2A),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+          underline: const SizedBox.shrink(),
+          hint: const Text('Choose track…', style: TextStyle(color: Colors.white38, fontSize: 11)),
+          items: [
+            const DropdownMenuItem<String?>(value: null, child: Text('None')),
+            for (final path in options)
+              DropdownMenuItem<String?>(
+                value: path,
+                child: Text(path.split('/').last, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (path) => path == null ? manager.stop() : manager.play(path),
+        );
+      },
     );
   }
 }
