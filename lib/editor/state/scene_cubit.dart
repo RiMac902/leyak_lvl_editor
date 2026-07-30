@@ -27,7 +27,33 @@ class SceneCubit extends Cubit<SceneState> {
   final HistoryController _history;
 
   void refresh() {
-    emit(SceneState(entities: _repository.all, selected: List.of(_selectionTool.selected)));
+    emit(SceneState(entities: _repository.sortedByLayer, selected: List.of(_selectionTool.selected)));
+  }
+
+  /// Виділяє [entity] (клік по рядку в Layers panel) — якщо вона в
+  /// постійній групі, виділяє одразу всю групу, як і клік на канвасі.
+  /// Заблоковані сутності ігнорує — так само, як і hit-test на канвасі.
+  void selectEntity(LevelEntity entity) {
+    if (entity.isLocked) return;
+
+    final groupId = entity.groupId;
+    _selectionTool.selected
+      ..clear()
+      ..addAll(groupId != null ? _repository.membersOf(groupId) : [entity]);
+    _selectionTool.onChanged?.call();
+  }
+
+  /// Перезаписує [LevelEntity.layer] усіх сутностей у [topToBottomOrder]
+  /// так, щоб їхній z-порядок точно відповідав цьому списку (індекс 0 —
+  /// найвищий шар). Викликається після drag-and-drop реордеру в Layers
+  /// panel — простіше й надійніше за "зсув на одну позицію", бо
+  /// перетягування може одразу міняти відносний порядок кількох сутностей.
+  void reorderLayers(List<LevelEntity> topToBottomOrder) {
+    _history.checkpoint();
+    for (var i = 0; i < topToBottomOrder.length; i++) {
+      topToBottomOrder[i].layer = topToBottomOrder.length - 1 - i;
+    }
+    refresh();
   }
 
   /// Якщо поточне виділення — рівно одна ціла постійна група, повертає її
@@ -126,6 +152,41 @@ class SceneCubit extends Cubit<SceneState> {
   void setEntityVideo(LevelEntity entity, String? path) {
     _history.checkpoint();
     entity.visual.videoPath = path;
+    refresh();
+  }
+
+  /// Радіус заокруглення кутів — застосовується лише коли
+  /// `shapeType == ShapeType.rectangle` (див. [ShapeStyle.cornerRadius]).
+  void setEntityCornerRadius(LevelEntity entity, double radius) {
+    _history.checkpoint();
+    entity.shapeStyle.cornerRadius = radius;
+    refresh();
+  }
+
+  void setPartCornerRadius(LevelEntity entity, int partIndex, double radius) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].shapeStyle.cornerRadius = radius;
+    refresh();
+  }
+
+  /// Товщина лінії — незалежний параметр від bounding-box (див.
+  /// [ShapeStyle.lineThickness]), застосовується лише коли
+  /// `shapeType == ShapeType.line`.
+  void setEntityLineThickness(LevelEntity entity, double thickness) {
+    _history.checkpoint();
+    entity.shapeStyle.lineThickness = thickness;
+    refresh();
+  }
+
+  void setPartLineThickness(LevelEntity entity, int partIndex, double thickness) {
+    final parts = entity.parts;
+    if (parts == null || partIndex < 0 || partIndex >= parts.length) return;
+
+    _history.checkpoint();
+    parts[partIndex].shapeStyle.lineThickness = thickness;
     refresh();
   }
 

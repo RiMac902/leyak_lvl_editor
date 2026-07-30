@@ -5,6 +5,7 @@ import 'package:leyak_lvl_editor/editor/components/grid_component.dart';
 import 'package:leyak_lvl_editor/editor/components/object_manager.dart';
 import 'package:leyak_lvl_editor/editor/controllers/editor_mode_controller.dart';
 import 'package:leyak_lvl_editor/editor/controllers/grid_snap_controller.dart';
+import 'package:leyak_lvl_editor/editor/controllers/shape_selection_controller.dart';
 import 'package:leyak_lvl_editor/editor/input/delete_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/duplicate_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/editor_keyboard_shortcuts.dart';
@@ -26,6 +27,7 @@ class EditorWorld extends World
 
   final EditorModeController modeController = EditorModeController();
   final GridSnapController snapController = GridSnapController();
+  final ShapeSelectionController shapeController = ShapeSelectionController();
 
   final EditorKeyboardShortcuts _modeShortcuts = const EditorKeyboardShortcuts();
   final GroupShortcut _groupShortcut = const GroupShortcut();

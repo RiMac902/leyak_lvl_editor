@@ -5,8 +5,39 @@ import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
 import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
+
+/// Знімок [ShapeStyle].
+class ShapeStyleSnapshot {
+  ShapeStyleSnapshot._({
+    required this.cornerRadius,
+    required this.lineThickness,
+    required this.lineStart,
+    required this.lineEnd,
+  });
+
+  factory ShapeStyleSnapshot.of(ShapeStyle style) => ShapeStyleSnapshot._(
+    cornerRadius: style.cornerRadius,
+    lineThickness: style.lineThickness,
+    lineStart: style.lineStart.clone(),
+    lineEnd: style.lineEnd.clone(),
+  );
+
+  final double cornerRadius;
+  final double lineThickness;
+  final Vector2 lineStart;
+  final Vector2 lineEnd;
+
+  ShapeStyle toStyle() => ShapeStyle(
+    cornerRadius: cornerRadius,
+    lineThickness: lineThickness,
+    lineStart: lineStart.clone(),
+    lineEnd: lineEnd.clone(),
+  );
+}
 
 /// Знімок одного [EntityPart] складеної сутності.
 class EntityPartSnapshot {
@@ -14,6 +45,8 @@ class EntityPartSnapshot {
     required this.relativePosition,
     required this.size,
     required this.color,
+    required this.shapeType,
+    required this.shapeStyle,
     required this.shaderId,
     required this.videoPath,
   });
@@ -22,6 +55,8 @@ class EntityPartSnapshot {
     relativePosition: part.relativePosition.clone(),
     size: part.size.clone(),
     color: part.color,
+    shapeType: part.shapeType,
+    shapeStyle: ShapeStyleSnapshot.of(part.shapeStyle),
     shaderId: part.shaderId,
     videoPath: part.videoPath,
   );
@@ -29,6 +64,8 @@ class EntityPartSnapshot {
   final Vector2 relativePosition;
   final Vector2 size;
   final Color color;
+  final ShapeType shapeType;
+  final ShapeStyleSnapshot shapeStyle;
   final String? shaderId;
   final String? videoPath;
 
@@ -36,6 +73,8 @@ class EntityPartSnapshot {
     relativePosition: relativePosition.clone(),
     size: size.clone(),
     color: color,
+    shapeType: shapeType,
+    shapeStyle: shapeStyle.toStyle(),
     shaderId: shaderId,
     videoPath: videoPath,
   );
@@ -51,6 +90,8 @@ class EntitySnapshot {
     required this.scale,
     required this.size,
     required this.color,
+    required this.shapeType,
+    required this.shapeStyle,
     required this.shaderId,
     required this.videoPath,
     required this.customProperties,
@@ -68,6 +109,8 @@ class EntitySnapshot {
     scale: entity.transform.scale.clone(),
     size: entity.transform.size.clone(),
     color: entity.visual.color,
+    shapeType: entity.shapeType,
+    shapeStyle: ShapeStyleSnapshot.of(entity.shapeStyle),
     shaderId: entity.visual.shaderId,
     videoPath: entity.visual.videoPath,
     customProperties: Map<String, dynamic>.of(entity.customProperties),
@@ -84,6 +127,8 @@ class EntitySnapshot {
   final Vector2 scale;
   final Vector2 size;
   final Color color;
+  final ShapeType shapeType;
+  final ShapeStyleSnapshot shapeStyle;
   final String? shaderId;
   final String? videoPath;
   final Map<String, dynamic> customProperties;
@@ -102,6 +147,8 @@ class EntitySnapshot {
       size: size.clone(),
     ),
     visual: VisualData(color: color, shaderId: shaderId, videoPath: videoPath),
+    shapeType: shapeType,
+    shapeStyle: shapeStyle.toStyle(),
     customProperties: Map<String, dynamic>.of(customProperties),
     parts: parts?.map((p) => p.toPart()).toList(),
     layer: layer,

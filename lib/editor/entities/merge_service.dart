@@ -45,6 +45,8 @@ class MergeService {
             relativePosition: entity.transform.position - origin,
             size: entity.transform.size.clone(),
             color: entity.visual.color,
+            shapeType: entity.shapeType,
+            shapeStyle: entity.shapeStyle.clone(),
             shaderId: entity.visual.shaderId,
             videoPath: entity.visual.videoPath,
           ),
@@ -56,7 +58,9 @@ class MergeService {
       transform: TransformData(position: origin, size: Vector2(maxX - minX, maxY - minY)),
       visual: VisualData(color: entities.first.visual.color),
       parts: parts,
-      layer: entities.first.layer,
+      // Найвищий шар серед об'єднаних — результат лишається там же,
+      // де були найвищі з колишніх сутностей у стеку.
+      layer: entities.map((e) => e.layer).reduce((a, b) => a > b ? a : b),
     );
   }
 }

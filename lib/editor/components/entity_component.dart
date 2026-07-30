@@ -5,7 +5,10 @@ import 'package:leyak_lvl_editor/code/di/injection.dart';
 import 'package:leyak_lvl_editor/editor/animation/position_smoothing.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/rendering/shader_catalog.dart';
+import 'package:leyak_lvl_editor/editor/rendering/shape_path.dart';
 import 'package:leyak_lvl_editor/editor/video/video_texture_manager.dart';
 
 /// Єдина відповідальність — візуальне представлення однієї [LevelEntity]
@@ -53,6 +56,7 @@ class EntityComponent extends PositionComponent
   void onLoad() {
     super.onLoad();
     snapToTarget();
+    priority = entity.layer;
   }
 
   @override
@@ -65,6 +69,12 @@ class EntityComponent extends PositionComponent
     scale.setFrom(entity.transform.scale);
     size.setFrom(entity.transform.size * game.tileSize);
     isVisible = entity.isVisible;
+    // priority — фактичний z-order у дереві Flame (більший = малюється
+    // пізніше = зверху). Сеттер сам не робить нічого дорогого, якщо
+    // значення не змінилось, тож можна просто присвоювати щокадру, а не
+    // звіряти вручну — реальне перевпорядкування (Layers panel ▲▼) стає
+    // видимим одразу.
+    priority = entity.layer;
 
     _reconcileVideoUsage();
   }
@@ -118,7 +128,16 @@ class EntityComponent extends PositionComponent
           part.size.x * tileSize,
           part.size.y * tileSize,
         );
-        _drawShape(canvas, partRect, part.color, part.shaderId, part.videoPath);
+        _drawShape(
+          canvas,
+          partRect,
+          part.color,
+          part.shaderId,
+          part.videoPath,
+          part.shapeType,
+          part.shapeStyle,
+          tileSize,
+        );
       }
     } else {
       _drawShape(
@@ -127,6 +146,9 @@ class EntityComponent extends PositionComponent
         entity.visual.color,
         entity.visual.shaderId,
         entity.visual.videoPath,
+        entity.shapeType,
+        entity.shapeStyle,
+        game.tileSize,
       );
     }
 
@@ -140,21 +162,33 @@ class EntityComponent extends PositionComponent
     }
   }
 
-  /// Малює прямокутник [rect] суцільним кольором [color], і якщо [shaderId]
-  /// заданий і знайдений у [ShaderCatalog] — НАКЛАДАЄ шейдер поверх нього
-  /// (не замінює колір, а компонується над ним, як напівпрозора плівка).
-  /// Якщо шейдер потребує текстури ([ShaderCatalog.needsTexture]), бере
-  /// поточний кадр відео за [videoPath] з [VideoTextureManager] — якщо
-  /// кадру ще нема (відео не задане чи ще завантажується), тихо пропускає
-  /// шейдер і лишає просто базовий колір, а не падає/блокується.
+  /// Малює форму [shapeType], вписану в [rect], суцільним кольором [color],
+  /// і якщо [shaderId] заданий і знайдений у [ShaderCatalog] — НАКЛАДАЄ
+  /// шейдер поверх неї (не замінює колір, а компонується над ним, як
+  /// напівпрозора плівка), кліпуючи його тим самим контуром форми, щоб
+  /// накладення не "вилазило" за межі не-прямокутних форм. Якщо шейдер
+  /// потребує текстури ([ShaderCatalog.needsTexture]), бере поточний кадр
+  /// відео за [videoPath] з [VideoTextureManager] — якщо кадру ще нема
+  /// (відео не задане чи ще завантажується), тихо пропускає шейдер і
+  /// лишає просто базовий колір, а не падає/блокується.
   ///
   /// Шейдер рендериться в окреме off-screen зображення точного розміру
   /// [rect], а не напряму на вже трансформований канвас — інакше координати
   /// всередині шейдера ([FlutterFragCoord]) плавали б разом із позицією/
   /// поворотом/зумом об'єкта замість того, щоб лишатись "прив'язаними" до
   /// самої фігури.
-  void _drawShape(Canvas canvas, Rect rect, Color color, String? shaderId, String? videoPath) {
-    canvas.drawRect(rect, Paint()..color = color);
+  void _drawShape(
+    Canvas canvas,
+    Rect rect,
+    Color color,
+    String? shaderId,
+    String? videoPath,
+    ShapeType shapeType,
+    ShapeStyle shapeStyle,
+    double tileSize,
+  ) {
+    final path = shapePathFor(shapeType, rect, shapeStyle, tileSize);
+    canvas.drawPath(path, Paint()..color = color);
 
     final catalog = getIt<ShaderCatalog>();
     final shader = catalog.shaderFor(shaderId);
@@ -175,12 +209,16 @@ class EntityComponent extends PositionComponent
 
     final image = _renderShaderImage(shader, rect.width, rect.height);
     if (image == null) return;
+
+    canvas.save();
+    canvas.clipPath(path);
     canvas.drawImageRect(
       image,
       Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
       rect,
       Paint(),
     );
+    canvas.restore();
   }
 
   Image? _renderShaderImage(FragmentShader shader, double width, double height) {

@@ -2,6 +2,9 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:leyak_lvl_editor/editor/geometry/grid_coordinate_converter.dart';
 import 'package:leyak_lvl_editor/editor/geometry/grid_rect.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
+import 'package:leyak_lvl_editor/editor/rendering/shape_path.dart';
 import 'package:leyak_lvl_editor/editor/tools/draw_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/selection_tool.dart';
 
@@ -27,6 +30,8 @@ class ToolOverlayRenderer {
         drawTool.entity!.transform.size,
         tileSize,
         drawTool.entity!.visual.color,
+        drawTool.entity!.shapeType,
+        drawTool.entity!.shapeStyle,
       );
     }
 
@@ -41,14 +46,22 @@ class ToolOverlayRenderer {
     }
   }
 
-  void _drawRect(Canvas canvas, Vector2 origin, Vector2 size, double tileSize, Color color) {
+  void _drawRect(
+    Canvas canvas,
+    Vector2 origin,
+    Vector2 size,
+    double tileSize,
+    Color color,
+    ShapeType shapeType,
+    ShapeStyle shapeStyle,
+  ) {
     final rect = Rect.fromLTWH(
       origin.x * tileSize,
       origin.y * tileSize,
       size.x * tileSize,
       size.y * tileSize,
     );
-    canvas.drawRect(rect, Paint()..color = color);
+    canvas.drawPath(shapePathFor(shapeType, rect, shapeStyle, tileSize), Paint()..color = color);
   }
 
   void _drawMarquee(

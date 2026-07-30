@@ -5,9 +5,9 @@ import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
 
 /// Список усіх намальованих сутностей сцени (аналог панелі "Layers").
-/// Лише перегляд — не змінює жодних даних, підсвічує виділені сутності.
-/// Дані читає з [SceneCubit] через [BlocBuilder] — про [MainEditor]/Flame
-/// нічого не знає.
+/// Клік по рядку виділяє сутність, перетягування за іконку зліва (drag
+/// handle) міняє z-порядок ([SceneCubit.reorderLayers]). Дані читає з
+/// [SceneCubit] через [BlocBuilder] — про [MainEditor]/Flame нічого не знає.
 class LayersPanel extends StatelessWidget {
   const LayersPanel({super.key});
 
@@ -38,6 +38,9 @@ class LayersPanel extends StatelessWidget {
             Flexible(
               child: BlocBuilder<SceneCubit, SceneState>(
                 builder: (context, state) {
+                  // state.entities — sortedByLayer (зростання); reversed:
+                  // індекс 0 — найвищий шар, тобто те, що малюється зверху
+                  // й показується на початку списку.
                   final entities = state.entities.reversed.toList();
                   if (entities.isEmpty) {
                     return const Padding(
@@ -45,13 +48,22 @@ class LayersPanel extends StatelessWidget {
                       child: Text('No shapes yet', style: TextStyle(color: Colors.white38)),
                     );
                   }
-                  return ListView.builder(
+                  return ReorderableListView.builder(
                     shrinkWrap: true,
+                    buildDefaultDragHandles: false,
                     itemCount: entities.length,
+                    onReorderItem: (oldIndex, newIndex) {
+                      final reordered = List<LevelEntity>.of(entities);
+                      final moved = reordered.removeAt(oldIndex);
+                      reordered.insert(newIndex, moved);
+                      context.read<SceneCubit>().reorderLayers(reordered);
+                    },
                     itemBuilder: (context, index) {
                       final entity = entities[index];
                       return _LayerRow(
+                        key: ValueKey(entity.id),
                         entity: entity,
+                        index: index,
                         isSelected: state.selected.contains(entity),
                       );
                     },
@@ -67,61 +79,77 @@ class LayersPanel extends StatelessWidget {
 }
 
 class _LayerRow extends StatelessWidget {
-  const _LayerRow({required this.entity, required this.isSelected});
+  const _LayerRow({
+    required super.key,
+    required this.entity,
+    required this.index,
+    required this.isSelected,
+  });
 
   final LevelEntity entity;
+  final int index;
   final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Opacity(
       opacity: entity.isLocked ? 0.5 : 1.0,
-      child: Container(
-        color: isSelected ? Colors.white24 : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: entity.visual.color,
-                border: Border.all(color: Colors.white54),
+      child: InkWell(
+        onTap: entity.isLocked ? null : () => context.read<SceneCubit>().selectEntity(entity),
+        child: Container(
+          color: isSelected ? Colors.white24 : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: Icon(Icons.drag_indicator, size: 16, color: Colors.white38),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Shape ${entity.id}',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: entity.visual.color,
+                  border: Border.all(color: Colors.white54),
+                ),
               ),
-            ),
-            if (entity.groupId != null) ...[
-              _GroupBadge(groupId: entity.groupId!),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Shape ${entity.id}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              if (entity.groupId != null) ...[
+                _GroupBadge(groupId: entity.groupId!),
+                const SizedBox(width: 6),
+              ],
+              IconButton(
+                icon: Icon(
+                  entity.isLocked ? Icons.lock : Icons.lock_open,
+                  size: 16,
+                  color: Colors.white54,
+                ),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                splashRadius: 14,
+                onPressed: () => context.read<SceneCubit>().toggleLock(entity),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white54),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                splashRadius: 14,
+                onPressed: entity.isLocked
+                    ? null
+                    : () => context.read<SceneCubit>().deleteEntity(entity),
+              ),
             ],
-            IconButton(
-              icon: Icon(
-                entity.isLocked ? Icons.lock : Icons.lock_open,
-                size: 16,
-                color: Colors.white54,
-              ),
-              constraints: const BoxConstraints(),
-              padding: EdgeInsets.zero,
-              splashRadius: 14,
-              onPressed: () => context.read<SceneCubit>().toggleLock(entity),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white54),
-              constraints: const BoxConstraints(),
-              padding: EdgeInsets.zero,
-              splashRadius: 14,
-              onPressed: entity.isLocked
-                  ? null
-                  : () => context.read<SceneCubit>().deleteEntity(entity),
-            ),
-          ],
+          ),
         ),
       ),
     );

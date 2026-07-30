@@ -7,6 +7,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:leyak_lvl_editor/code/di/injection.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/level_group.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/rendering/shader_catalog.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
@@ -98,6 +99,15 @@ class _EntityEditor extends StatelessWidget {
           onRotationChanged: (radians) =>
               context.read<SceneCubit>().setEntityRotation(entity, radians),
           onScaleChanged: (scale) => context.read<SceneCubit>().setEntityScale(entity, scale),
+        ),
+        _ShapeStyleFields(
+          shapeType: entity.shapeType,
+          cornerRadius: entity.shapeStyle.cornerRadius,
+          lineThickness: entity.shapeStyle.lineThickness,
+          onCornerRadiusChanged: (v) =>
+              context.read<SceneCubit>().setEntityCornerRadius(entity, v),
+          onLineThicknessChanged: (v) =>
+              context.read<SceneCubit>().setEntityLineThickness(entity, v),
         ),
         const SizedBox(height: 12),
         if (entity.parts != null && entity.parts!.isNotEmpty)
@@ -310,10 +320,68 @@ class _PartsEditor extends StatelessWidget {
               onChanged: (path) => cubit.setPartVideo(entity, i, path),
             ),
           ],
+          _ShapeStyleFields(
+            shapeType: parts[i].shapeType,
+            cornerRadius: parts[i].shapeStyle.cornerRadius,
+            lineThickness: parts[i].shapeStyle.lineThickness,
+            onCornerRadiusChanged: (v) => cubit.setPartCornerRadius(entity, i, v),
+            onLineThicknessChanged: (v) => cubit.setPartLineThickness(entity, i, v),
+          ),
           if (i != parts.length - 1) const SizedBox(height: 6),
         ],
       ],
     );
+  }
+}
+
+/// Поле для параметрів форми, специфічних для конкретного [ShapeType] —
+/// радіус заокруглення (тільки прямокутник) чи товщина лінії (тільки
+/// лінія). Для решти форм не показує нічого — не всі форми мають такі
+/// параметри.
+class _ShapeStyleFields extends StatelessWidget {
+  const _ShapeStyleFields({
+    required this.shapeType,
+    required this.cornerRadius,
+    required this.lineThickness,
+    required this.onCornerRadiusChanged,
+    required this.onLineThicknessChanged,
+  });
+
+  final ShapeType shapeType;
+  final double cornerRadius;
+  final double lineThickness;
+  final ValueChanged<double> onCornerRadiusChanged;
+  final ValueChanged<double> onLineThicknessChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shapeType == ShapeType.rectangle) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Corner radius', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 4),
+            _NumberField(value: cornerRadius, onChanged: onCornerRadiusChanged),
+          ],
+        ),
+      );
+    }
+    if (shapeType == ShapeType.line) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Line thickness', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 4),
+            _NumberField(value: lineThickness, onChanged: onLineThicknessChanged),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 

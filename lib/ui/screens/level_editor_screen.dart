@@ -8,6 +8,7 @@ import 'package:leyak_lvl_editor/editor/video/video_texture_manager.dart';
 import 'package:leyak_lvl_editor/ui/widgets/hud_notification.dart';
 import 'package:leyak_lvl_editor/ui/widgets/inspector_panel.dart';
 import 'package:leyak_lvl_editor/ui/widgets/layers_panel.dart';
+import 'package:leyak_lvl_editor/ui/widgets/shape_toolbar.dart';
 import 'package:leyak_lvl_editor/ui/widgets/video_texture_host.dart';
 
 class LevelEditorScreen extends StatefulWidget {
@@ -57,6 +58,7 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
             ),
             const LayersPanel(),
             const InspectorPanel(),
+            ShapeToolbar(game: _game),
             VideoTextureHost(manager: getIt<VideoTextureManager>()),
           ],
         ),

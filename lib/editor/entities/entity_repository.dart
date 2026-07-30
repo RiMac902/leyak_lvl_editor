@@ -67,11 +67,23 @@ class EntityRepository {
   List<LevelEntity> membersOf(String groupId) =>
       _entities.where((entity) => entity.groupId == groupId).toList();
 
+  /// Наступне вільне значення [LevelEntity.layer] — на 1 вище за
+  /// найвищий наявний, щоб щойно намальована/здубльована/об'єднана
+  /// сутність завжди опинялась зверху стека, а не позаду вже наявних.
+  int get nextLayer {
+    if (_entities.isEmpty) return 0;
+    return _entities.map((e) => e.layer).reduce((a, b) => a > b ? a : b) + 1;
+  }
+
   /// Заблоковані сутності навмисно пропускаються і тут, і в [findWithin] —
-  /// це і є весь ефект "lock": вони просто невидимі для виділення.
+  /// це і є весь ефект "lock": вони просто невидимі для виділення. Перевіряє
+  /// від найвищого [LevelEntity.layer] до найнижчого — так само, як
+  /// малюється (див. [EntityComponent.priority]), щоб клік завжди влучав у
+  /// те, що візуально зверху, а не в те, що просто раніше додане.
   LevelEntity? findAt(Vector2 cell) {
-    for (var i = _entities.length - 1; i >= 0; i--) {
-      final entity = _entities[i];
+    final topmostFirst = List<LevelEntity>.from(_entities)
+      ..sort((a, b) => b.layer.compareTo(a.layer));
+    for (final entity in topmostFirst) {
       if (!entity.isVisible || entity.isLocked) continue;
 
       final pos = absolutePositionOf(entity);

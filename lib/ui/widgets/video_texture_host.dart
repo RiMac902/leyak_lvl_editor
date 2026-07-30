@@ -18,16 +18,24 @@ class VideoTextureHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<Set<String>>(
-      valueListenable: manager.activePaths,
-      builder: (context, paths, _) {
-        return Stack(
-          children: [
-            for (final path in paths)
-              _VideoFrameCapture(key: ValueKey(path), path: path, manager: manager),
-          ],
-        );
-      },
+    // IgnorePointer: цей віджет існує лише для непомітного захоплення
+    // кадрів (Opacity(0.01), не 0 — щоб paint-прохід реально відбувався,
+    // див. коментар у _VideoFrameCapture), а не для взаємодії. Без цього
+    // його SizedBox(320x180) у верхньому лівому куті екрана перехоплює
+    // всі кліки/драги під собою (напр. увесь Layers panel), бо Flutter
+    // хіт-тестить Opacity нормально при будь-якому значенні > 0.0.
+    return IgnorePointer(
+      child: ValueListenableBuilder<Set<String>>(
+        valueListenable: manager.activePaths,
+        builder: (context, paths, _) {
+          return Stack(
+            children: [
+              for (final path in paths)
+                _VideoFrameCapture(key: ValueKey(path), path: path, manager: manager),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -53,7 +53,11 @@ class ObjectManager extends Component
     () => world.snapController.snapEnabled,
   );
 
-  late final DrawTool _drawTool = DrawTool(_repository, _converter);
+  late final DrawTool _drawTool = DrawTool(
+    _repository,
+    _converter,
+    () => world.shapeController.current,
+  );
 
   late final SelectionTool _selectionTool = SelectionTool(
     _repository,
@@ -160,6 +164,7 @@ class ObjectManager extends Component
     final wasFullGroup = _groupingService.fullGroupSelectionOf(selected) != null;
     const offset = 1.0;
     final clones = <LevelEntity>[];
+    final baseLayer = _repository.nextLayer;
 
     for (var i = 0; i < selected.length; i++) {
       final entity = selected[i];
@@ -184,12 +189,16 @@ class ObjectManager extends Component
                 relativePosition: part.relativePosition.clone(),
                 size: part.size.clone(),
                 color: part.color,
+                shapeType: part.shapeType,
+                shapeStyle: part.shapeStyle.clone(),
                 shaderId: part.shaderId,
                 videoPath: part.videoPath,
               ),
             )
             .toList(),
-        layer: entity.layer,
+        layer: baseLayer + i,
+        shapeType: entity.shapeType,
+        shapeStyle: entity.shapeStyle.clone(),
         isVisible: entity.isVisible,
       );
       _repository.add(clone);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
 
@@ -23,6 +25,16 @@ class LevelEntity {
   String? groupId;
   bool isVisible;
 
+  /// Форма, якою малюється сутність (коли [parts] порожній) — вписана в
+  /// той самий bounding-box [transform.position]/[transform.size], як і
+  /// прямокутник раніше. Drag/hit-test/снепінг лишаються прямокутними
+  /// незалежно від [shapeType] — див. [ShapeType].
+  ShapeType shapeType;
+
+  /// Додаткові параметри форми (радіус заокруглення, товщина й точки
+  /// лінії) — див. [ShapeStyle].
+  final ShapeStyle shapeStyle;
+
   /// Заблокована сутність не потрапляє в [EntityRepository.findAt]/
   /// [findWithin] — її не можна виділити кліком/marquee на канвасі, а отже
   /// й перемістити, видалити, згрупувати, дублювати чи об'єднати (усі ці
@@ -37,19 +49,26 @@ class LevelEntity {
     this.parts,
     this.layer = 0,
     this.groupId,
+    this.shapeType = ShapeType.rectangle,
+    ShapeStyle? shapeStyle,
     this.isVisible = true,
     this.isLocked = false,
   }) : transform = transform ?? TransformData(),
        visual = visual ?? VisualData(),
+       shapeStyle = shapeStyle ?? ShapeStyle(),
        customProperties = customProperties ?? {};
 
-  LevelEntity.create({Map<String, dynamic>? customProperties, Color? color})
-    : this(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        transform: TransformData(),
-        visual: VisualData(color: color ?? Colors.grey),
-        customProperties: customProperties == null
-            ? {}
-            : Map<String, dynamic>.from(customProperties),
-      );
+  LevelEntity.create({
+    Map<String, dynamic>? customProperties,
+    Color? color,
+    ShapeType shapeType = ShapeType.rectangle,
+  }) : this(
+         id: DateTime.now().millisecondsSinceEpoch.toString(),
+         transform: TransformData(),
+         visual: VisualData(color: color ?? Colors.grey),
+         shapeType: shapeType,
+         customProperties: customProperties == null
+             ? {}
+             : Map<String, dynamic>.from(customProperties),
+       );
 }
