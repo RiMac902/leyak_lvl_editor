@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flame/components.dart' show Vector2;
 import 'package:leyak_lvl_editor/editor/models/shape_style.dart';
 import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 
@@ -36,7 +37,39 @@ Path shapePathFor(ShapeType type, Rect rect, ShapeStyle style, double tileSize) 
         rect.top + style.lineEnd.y * tileSize,
       );
       return _linePath(start, end, style.lineThickness * tileSize, style.cornerRadii, tileSize);
+    case ShapeType.path:
+      return _pathShapePath(rect.topLeft, style, tileSize);
   }
+}
+
+/// Багатоточковий bezier-контур ([ShapeStyle.pathPoints]) — на відміну від
+/// решти форм, [rect] тут використовується лише як зсув початку координат
+/// (`rect.topLeft` відповідає grid-точці (0,0), тобто [TransformData.position]
+/// сутності), а не як bounding-box, що визначає геометрію: точки самі й
+/// визначають форму, bbox — похідне значення (`recomputePathBounds`).
+/// Менше 2 точок — ще незавершений (чи порожній) контур, малювати нічого.
+Path _pathShapePath(Offset origin, ShapeStyle style, double tileSize) {
+  final points = style.pathPoints;
+  if (points.length < 2) return Path();
+
+  Offset toOffset(Vector2 v) => origin + Offset(v.x, v.y) * tileSize;
+
+  final path = Path();
+  final first = toOffset(points.first);
+  path.moveTo(first.dx, first.dy);
+
+  final count = points.length;
+  final segmentCount = style.pathClosed ? count : count - 1;
+  for (var i = 0; i < segmentCount; i++) {
+    final next = (i + 1) % count;
+    final handleOut = toOffset(points[i] + style.pathHandlesOut[i]);
+    final handleIn = toOffset(points[next] + style.pathHandlesIn[next]);
+    final end = toOffset(points[next]);
+    path.cubicTo(handleOut.dx, handleOut.dy, handleIn.dx, handleIn.dy, end.dx, end.dy);
+  }
+
+  if (style.pathClosed) path.close();
+  return path;
 }
 
 /// "Лінія" — заповнений вузький чотирикутник між [start] і [end] завширшки

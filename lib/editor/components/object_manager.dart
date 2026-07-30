@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:leyak_lvl_editor/editor/components/editor_world.dart';
 import 'package:leyak_lvl_editor/editor/components/scene_component_registry.dart';
+import 'package:leyak_lvl_editor/editor/controllers/path_node_gizmo_controller.dart';
 import 'package:leyak_lvl_editor/editor/controllers/transform_gizmo_controller.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/group_repository.dart';
@@ -16,12 +17,14 @@ import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
 import 'package:leyak_lvl_editor/editor/models/entity_part.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
 import 'package:leyak_lvl_editor/editor/rendering/tool_overlay_renderer.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/tools/draw_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/editor_tool.dart';
+import 'package:leyak_lvl_editor/editor/tools/path_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/selection_tool.dart';
 
 /// Композиційний корінь для роботи з об'єктами сцени: маршрутизує
@@ -68,6 +71,8 @@ class ObjectManager extends Component
     () => world.shapeController.current,
   );
 
+  late final PathTool _pathTool = PathTool(_repository, _converter);
+
   late final SelectionTool _selectionTool = SelectionTool(
     _repository,
     _converter,
@@ -101,10 +106,25 @@ class ObjectManager extends Component
     () => sceneCubit.refresh(),
   );
 
+  late final PathNodeGizmoController _pathNodeGizmoController = PathNodeGizmoController(
+    _selectionTool,
+    _registry,
+    this,
+    () => game.tileSize,
+    _history.checkpoint,
+    () => sceneCubit.refresh(),
+  );
+
   final ToolOverlayRenderer _overlayRenderer = const ToolOverlayRenderer();
 
-  EditorTool get _activeTool =>
-      world.currentMode == EditorMode.draw ? _drawTool : _selectionTool;
+  /// В режимі малювання (F) маршрутизує на [_pathTool], коли в
+  /// [ShapeToolbar] обрано [ShapeType.path] — той самий перемикач шейпів,
+  /// що й для решти форм, лише [PathTool] має свій, відмінний від
+  /// [DrawTool] життєвий цикл (N кліків замість одного драгу).
+  EditorTool get _activeTool {
+    if (world.currentMode != EditorMode.draw) return _selectionTool;
+    return world.shapeController.current == ShapeType.path ? _pathTool : _drawTool;
+  }
 
   void handleDragStart(Vector2 worldPos) => _activeTool.dragStart(worldPos);
 
@@ -272,11 +292,24 @@ class ObjectManager extends Component
     return didRedo;
   }
 
+  /// Чи зараз будується контур (для [PathShortcut] — Enter/Escape мають
+  /// щось робити лише поки контур активний, інакше "проковтували" б ці
+  /// клавіші завжди).
+  bool get isBuildingPath => _pathTool.isBuilding;
+
+  /// Enter — завершує контур, що будує [_pathTool] (мінімум 2 точки).
+  /// Повертає, чи справді щось закомітилось (для HUD-нотифікації).
+  bool finishPath() => _pathTool.finish();
+
+  /// Escape — скасовує побудову контуру без коміту.
+  void cancelPath() => _pathTool.cancel();
+
   @override
   Future<void> onLoad() async {
     await add(_registry);
 
     _drawTool.beforeCommit = _history.checkpoint;
+    _pathTool.beforeCommit = _history.checkpoint;
     _selectionTool.beforeMove = _history.checkpoint;
 
     _repository.onEntityAdded = _registry.spawn;
@@ -293,6 +326,7 @@ class ObjectManager extends Component
     _selectionTool.onChanged = () {
       _registry.updateSelectionHighlight();
       _gizmoController.onSelectionChanged();
+      _pathNodeGizmoController.onSelectionChanged();
       sceneCubit.refresh();
     };
   }
@@ -305,6 +339,6 @@ class ObjectManager extends Component
 
   @override
   void render(Canvas canvas) {
-    _overlayRenderer.render(canvas, _converter, _drawTool, _selectionTool);
+    _overlayRenderer.render(canvas, _converter, _drawTool, _pathTool, _selectionTool);
   }
 }

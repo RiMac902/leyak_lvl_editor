@@ -5,12 +5,18 @@ import 'package:leyak_lvl_editor/editor/controllers/transform_target.dart';
 import 'package:leyak_lvl_editor/editor/entities/entity_repository.dart';
 import 'package:leyak_lvl_editor/editor/entities/grouping_service.dart';
 import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
+import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/tools/selection_tool.dart';
 
 /// Єдина відповідальність — показувати/ховати [TransformGizmoComponent]
 /// відповідно до поточного виділення: рівно для однієї не згрупованої
 /// сутності, або рівно однієї цілої групи (так само, як Inspector — для
 /// решти випадків просто немає активної цілі трансформації).
+///
+/// [ShapeType.path] навмисно виключений — довільний набір точок не має
+/// єдиного bounding-box/pivot, як очікує [TransformTarget]; для path
+/// натомість активний [PathNodeGizmoController] (той самий
+/// [SelectionTool.onChanged], інша ціль).
 class TransformGizmoController {
   TransformGizmoController(
     this._entities,
@@ -64,7 +70,9 @@ class TransformGizmoController {
   }
 
   TransformTarget? _resolveTarget(List<LevelEntity> selected) {
-    if (selected.length == 1 && selected.first.groupId == null) {
+    if (selected.length == 1 &&
+        selected.first.groupId == null &&
+        selected.first.shapeType != ShapeType.path) {
       final entity = selected.first;
       final component = _registry.componentOf(entity);
       if (component == null) return null;

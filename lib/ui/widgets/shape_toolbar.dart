@@ -21,6 +21,7 @@ class _ShapeToolbarState extends State<ShapeToolbar> {
     (ShapeType.ellipse, Icons.circle_outlined, 'Ellipse'),
     (ShapeType.triangle, Icons.change_history_outlined, 'Triangle'),
     (ShapeType.line, Icons.horizontal_rule, 'Line'),
+    (ShapeType.path, Icons.timeline, 'Path'),
   ];
 
   late ShapeType _selected = widget.game.editorWorld.shapeController.current;

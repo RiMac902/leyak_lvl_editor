@@ -155,7 +155,11 @@ class EntityComponent extends PositionComponent
       );
     }
 
-    if (isSelected) {
+    // Прямокутна рамка bbox як індикатор виділення — оминається для path:
+    // для довільного контуру вона вводила б в оману (рамка навколо
+    // bbox, не навколо самої кривої). Реальний індикатор виділення й
+    // редагування для path — точки-хендли з PathNodeGizmoComponent.
+    if (isSelected && entity.shapeType != ShapeType.path) {
       final rect = Rect.fromLTWH(0, 0, size.x, size.y);
       final borderPaint = Paint()
         ..color = const Color(0xFFFFFFFF)
@@ -193,7 +197,25 @@ class EntityComponent extends PositionComponent
     double tileSize,
   ) {
     final path = shapePathFor(shapeType, rect, shapeStyle, tileSize);
-    canvas.drawPath(path, Paint()..color = color);
+    if (shapeType == ShapeType.path && !shapeStyle.pathClosed) {
+      // Відкритий контур: суцільна заливка неявно замкнула б його прямою
+      // лінією від останньої точки до першої (як завжди робить fill на
+      // незамкненому Path) — замість цього обводимо сам контур, як
+      // товщину лінії ([lineThickness], те саме поле, що й для
+      // ShapeType.line). Замкнений контур — звичайний полігон, заливається
+      // як завжди.
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = shapeStyle.lineThickness * tileSize
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
+    } else {
+      canvas.drawPath(path, Paint()..color = color);
+    }
 
     final catalog = getIt<ShaderCatalog>();
 

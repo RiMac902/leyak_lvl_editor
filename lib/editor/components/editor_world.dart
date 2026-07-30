@@ -12,6 +12,7 @@ import 'package:leyak_lvl_editor/editor/input/editor_keyboard_shortcuts.dart';
 import 'package:leyak_lvl_editor/editor/input/grid_snap_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/group_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/merge_shortcut.dart';
+import 'package:leyak_lvl_editor/editor/input/path_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/input/undo_redo_shortcut.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/models/editor_mode.dart';
@@ -34,6 +35,7 @@ class EditorWorld extends World
   final DeleteShortcut _deleteShortcut = const DeleteShortcut();
   final DuplicateShortcut _duplicateShortcut = const DuplicateShortcut();
   final MergeShortcut _mergeShortcut = const MergeShortcut();
+  final PathShortcut _pathShortcut = const PathShortcut();
   final UndoRedoShortcut _undoRedoShortcut = const UndoRedoShortcut();
   final GridSnapShortcut _snapShortcut = const GridSnapShortcut();
 
@@ -87,6 +89,19 @@ class EditorWorld extends World
     final mode = _modeShortcuts.resolve(event);
     if (mode != null) {
       modeController.setMode(mode);
+      return true;
+    }
+
+    // Guard на isBuildingPath: інакше Enter/Escape "проковтувались" би
+    // завжди, навіть коли жоден контур зараз не будується.
+    final pathAction = objectManager.isBuildingPath ? _pathShortcut.resolve(event) : null;
+    if (pathAction != null) {
+      switch (pathAction) {
+        case PathShortcutAction.finish:
+          if (objectManager.finishPath()) _notification.show('PATH ADDED');
+        case PathShortcutAction.cancel:
+          objectManager.cancelPath();
+      }
       return true;
     }
 

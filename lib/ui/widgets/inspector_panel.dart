@@ -390,7 +390,7 @@ class _ShapeStyleFields extends StatelessWidget {
       ShapeType.rectangle => _rectangleLabels,
       ShapeType.triangle => _triangleLabels,
       ShapeType.line => _lineLabels,
-      ShapeType.ellipse => const <String>[],
+      ShapeType.ellipse || ShapeType.path => const <String>[],
     };
 
     if (shapeType != ShapeType.line && labels.isEmpty) return const SizedBox.shrink();
