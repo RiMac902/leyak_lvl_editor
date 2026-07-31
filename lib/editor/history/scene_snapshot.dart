@@ -203,16 +203,27 @@ class GroupSnapshot {
 
 /// Знімок однієї [LayerFolder].
 class LayerFolderSnapshot {
-  LayerFolderSnapshot._({required this.id, required this.name, required this.isExpanded});
+  LayerFolderSnapshot._({
+    required this.id,
+    required this.name,
+    required this.isExpanded,
+    required this.isBackground,
+  });
 
-  factory LayerFolderSnapshot.of(LayerFolder folder) =>
-      LayerFolderSnapshot._(id: folder.id, name: folder.name, isExpanded: folder.isExpanded);
+  factory LayerFolderSnapshot.of(LayerFolder folder) => LayerFolderSnapshot._(
+    id: folder.id,
+    name: folder.name,
+    isExpanded: folder.isExpanded,
+    isBackground: folder.isBackground,
+  );
 
   final String id;
   final String name;
   final bool isExpanded;
+  final bool isBackground;
 
-  LayerFolder toFolder() => LayerFolder(id: id, name: name, isExpanded: isExpanded);
+  LayerFolder toFolder() =>
+      LayerFolder(id: id, name: name, isExpanded: isExpanded, isBackground: isBackground);
 }
 
 /// Незалежний від Flame знімок усієї сцени в один момент часу — одиниця

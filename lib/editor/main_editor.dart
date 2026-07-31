@@ -14,6 +14,8 @@ class MainEditor extends FlameGame
   int gridWidth = 50;
   int gridLength = 50;
 
+  bool _hasCenteredCamera = false;
+
   MainEditor() {
     editorWorld = EditorWorld();
     world = editorWorld;
@@ -22,6 +24,25 @@ class MainEditor extends FlameGame
       ..viewfinder.anchor = Anchor.center;
 
     camera.viewfinder.position = Vector2(0, 0);
+  }
+
+  /// [size] (реальний розмір канви) невідомий у конструкторі — Flame
+  /// повідомляє його лише тут, при першому/наступних resize. Одноразово
+  /// (за [_hasCenteredCamera]) центруємо камеру на BackgroundFrameComponent
+  /// (перший екран рівня, прив'язаний до підлоги) замість (0,0) — після
+  /// того, як сітка стала стартувати з x=0 замість центру, (0,0) — це
+  /// верхній лівий кут рівня, і камера там показувала здебільшого
+  /// порожнечу з контентом, "стирчащим" у правому нижньому куті екрана.
+  /// Лише один раз — щоб зміна розміру вікна не смикала камеру назад,
+  /// якщо користувач уже кудись перейшов.
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    if (_hasCenteredCamera) return;
+    _hasCenteredCamera = true;
+
+    final groundY = gridLength * tileSize;
+    camera.viewfinder.position = Vector2(size.x / 2, groundY - size.y / 2);
   }
 
   @override

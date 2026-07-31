@@ -1,7 +1,10 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/services.dart';
+import 'package:leyak_lvl_editor/editor/components/background_frame_component.dart';
+import 'package:leyak_lvl_editor/editor/components/camera_path_overlay_component.dart';
 import 'package:leyak_lvl_editor/editor/components/grid_component.dart';
+import 'package:leyak_lvl_editor/editor/components/level_end_marker_component.dart';
 import 'package:leyak_lvl_editor/editor/components/object_manager.dart';
 import 'package:leyak_lvl_editor/editor/controllers/editor_mode_controller.dart';
 import 'package:leyak_lvl_editor/editor/controllers/grid_snap_controller.dart';
@@ -24,6 +27,13 @@ class EditorWorld extends World
     with DragCallbacks, KeyboardHandler, HasGameReference<MainEditor> {
   final GridComponent grid = GridComponent();
   final ObjectManager objectManager = ObjectManager();
+  final LevelEndMarkerComponent _levelEndMarker = LevelEndMarkerComponent();
+  final BackgroundFrameComponent _backgroundFrame = BackgroundFrameComponent();
+  // Декларується ПІСЛЯ objectManager: колбек читає objectManager.sceneCubit
+  // одразу при виклику, тож поле-джерело вже має бути ініціалізоване.
+  late final CameraPathOverlayComponent _cameraPathOverlay = CameraPathOverlayComponent(
+    entitiesOf: () => objectManager.sceneCubit.state.entities,
+  );
   late final NotificationController _notification;
 
   final EditorModeController modeController = EditorModeController();
@@ -48,6 +58,12 @@ class EditorWorld extends World
   Future<void> onLoad() async {
     add(grid);
     add(objectManager);
+    // Додаються ПІСЛЯ objectManager: Flame рендерить одноприоритетних
+    // дітей у порядку додавання, тож орієнтир фону й межа кінця рівня
+    // завжди лишаються видимими поверх сутностей, а не ховаються під ними.
+    add(_backgroundFrame);
+    add(_levelEndMarker);
+    add(_cameraPathOverlay);
 
     _notification = NotificationController(game);
     modeController.onModeChanged = (mode) => _notification.show(mode.label);

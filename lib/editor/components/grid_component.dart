@@ -16,8 +16,11 @@ class GridComponent extends Component with HasGameReference<MainEditor> {
     final int gridWidth = game.gridWidth;
     final int gridLength = game.gridLength;
 
-    final double gridLeft = -(gridWidth * tileSize) / 2;
-    final double gridRight = (gridWidth * tileSize) / 2;
+    // Рівень починається на x=0 (старт) і закінчується на gridWidth
+    // клітинок праворуч (кінець рівня, який тягає LevelEndMarkerComponent)
+    // — як у Geometry Dash, а не центрований довкола x=0.
+    final double gridLeft = 0;
+    final double gridRight = gridWidth * tileSize;
     final double gridTop = 0;
     final double gridBottom = gridLength * tileSize;
 

@@ -9,6 +9,8 @@ class EditorKeyboardShortcuts {
   static final Map<LogicalKeyboardKey, EditorMode> _bindings = {
     LogicalKeyboardKey.keyS: EditorMode.select,
     LogicalKeyboardKey.keyF: EditorMode.draw,
+    LogicalKeyboardKey.keyP: EditorMode.placeSpawn,
+    LogicalKeyboardKey.keyC: EditorMode.cameraPath,
   };
 
   EditorMode? resolve(KeyEvent event) {

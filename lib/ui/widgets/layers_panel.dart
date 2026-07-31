@@ -405,6 +405,21 @@ class _FolderRow extends StatelessWidget {
                 ),
               ),
               IconButton(
+                icon: Icon(
+                  folder.isBackground ? Icons.wallpaper : Icons.wallpaper_outlined,
+                  size: 16,
+                  color: folder.isBackground ? Colors.purpleAccent : Colors.white54,
+                ),
+                tooltip: folder.isBackground ? 'Unmark as background' : 'Mark as background',
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                splashRadius: 14,
+                onPressed: () => context.read<SceneCubit>().setFolderBackground(
+                  folder.id,
+                  !folder.isBackground,
+                ),
+              ),
+              IconButton(
                 icon: const Icon(Icons.folder_off_outlined, size: 16, color: Colors.white54),
                 tooltip: 'Ungroup',
                 constraints: const BoxConstraints(),

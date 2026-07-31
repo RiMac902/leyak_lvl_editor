@@ -14,6 +14,8 @@ import 'package:leyak_lvl_editor/editor/rendering/shader_catalog.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_state.dart';
 import 'package:leyak_lvl_editor/editor/video/video_asset_catalog.dart';
+import 'package:leyak_lvl_editor/game/player_mode.dart';
+import 'package:leyak_lvl_editor/game/speed_trigger_type.dart';
 
 /// Панель властивостей вибраної сутності. Єдине місце, де можна змінити
 /// `customProperties`/колір об'єкта — нових пресетів чи типів немає,
@@ -159,6 +161,12 @@ class _EntityEditor extends StatelessWidget {
           for (final key in entity.customProperties.keys.toList())
             _buildPropertyEditor(context, key, entity.customProperties[key]),
         ],
+        const SizedBox(height: 12),
+        _GameplayFields(entity: entity),
+        if (entity.customProperties['isCameraNode'] == true) ...[
+          const SizedBox(height: 12),
+          _CameraNodeFields(entity: entity),
+        ],
       ],
     );
   }
@@ -173,6 +181,137 @@ class _EntityEditor extends StatelessWidget {
       );
     }
     return _PropertyRow(key, '$value');
+  }
+}
+
+/// Секція для маркування сутності як playtest-об'єкта (не пов'язана з
+/// [ShapeType]/шейдерами — суто ігрові ролі, які читає `level_loader.dart`
+/// при запуску Playtest). Зберігає значення в тих самих
+/// [LevelEntity.customProperties], що й `isSolid`/`isDeadly` (ті вже
+/// редагуються вище через загальний bool-редактор `customProperties` —
+/// тут лише три РОЛІ, яких немає серед стандартних ключів кожної фігури,
+/// тож для них потрібен окремий UI, що вміє СТВОРЮВАТИ новий ключ, а не
+/// лише перемикати вже наявний.
+class _GameplayFields extends StatelessWidget {
+  const _GameplayFields({required this.entity});
+
+  final LevelEntity entity;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SceneCubit>();
+    final modeTrigger = playerModeFromString(entity.customProperties['modeTrigger'] as String?);
+    final speedTrigger = speedTriggerTypeFromString(
+      entity.customProperties['speedTrigger'] as String?,
+    );
+    final isFinish = entity.customProperties['isFinish'] == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Gameplay', style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            const SizedBox(
+              width: 90,
+              child: Text('Mode trigger', style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ),
+            DropdownButton<PlayerMode?>(
+              value: modeTrigger,
+              isDense: true,
+              dropdownColor: const Color(0xFF2A2A2A),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              underline: const SizedBox.shrink(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                for (final mode in PlayerMode.values)
+                  DropdownMenuItem(value: mode, child: Text(mode.name)),
+              ],
+              onChanged: (mode) =>
+                  cubit.setEntityProperty(entity, 'modeTrigger', mode?.name),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const SizedBox(
+              width: 90,
+              child: Text('Speed trigger', style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ),
+            DropdownButton<SpeedTriggerType?>(
+              value: speedTrigger,
+              isDense: true,
+              dropdownColor: const Color(0xFF2A2A2A),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              underline: const SizedBox.shrink(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                for (final type in SpeedTriggerType.values)
+                  DropdownMenuItem(value: type, child: Text(type.name)),
+              ],
+              onChanged: (type) =>
+                  cubit.setEntityProperty(entity, 'speedTrigger', type?.name),
+            ),
+          ],
+        ),
+        _BoolPropertyRow(
+          label: 'isFinish',
+          value: isFinish,
+          onChanged: (value) => cubit.setEntityProperty(entity, 'isFinish', value),
+        ),
+      ],
+    );
+  }
+}
+
+/// Числові поля для налаштування вузла камери ([CameraNodeTool]) — видима
+/// лише коли `customProperties['isCameraNode'] == true`. Кожне поле пише
+/// напряму через той самий загальний [SceneCubit.setEntityProperty], що й
+/// [_GameplayFields] — жодних нових методів у Cubit не потрібно.
+class _CameraNodeFields extends StatelessWidget {
+  const _CameraNodeFields({required this.entity});
+
+  final LevelEntity entity;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<SceneCubit>();
+    final props = entity.customProperties;
+
+    Widget field(String label, String key, double fallback) {
+      final value = (props[key] as double?) ?? fallback;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 90,
+              child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+            ),
+            SizedBox(
+              width: 60,
+              child: _NumberField(
+                value: value,
+                onChanged: (v) => cubit.setEntityProperty(entity, key, v),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Camera node', style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 4),
+        field('Zoom', 'cameraZoom', 1.0),
+        field('Offset X', 'cameraOffsetX', 0.0),
+        field('Offset Y', 'cameraOffsetY', 0.0),
+        field('Transition (s)', 'cameraTransitionDuration', 1.0),
+      ],
+    );
   }
 }
 

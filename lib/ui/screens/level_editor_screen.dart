@@ -2,9 +2,11 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leyak_lvl_editor/code/di/injection.dart';
+import 'package:leyak_lvl_editor/editor/history/scene_snapshot.dart';
 import 'package:leyak_lvl_editor/editor/main_editor.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/video/video_texture_manager.dart';
+import 'package:leyak_lvl_editor/ui/screens/playtest_screen.dart';
 import 'package:leyak_lvl_editor/ui/widgets/hud_notification.dart';
 import 'package:leyak_lvl_editor/ui/widgets/inspector_panel.dart';
 import 'package:leyak_lvl_editor/ui/widgets/layers_panel.dart';
@@ -37,6 +39,24 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
     super.dispose();
   }
 
+  /// Копіює поточні сутності через [EntitySnapshot] (той самий механізм,
+  /// що й undo/redo) — playtest отримує НЕЗАЛЕЖНУ глибоку копію, тож нічого
+  /// в ньому не може ненавмисно змінити дані, які ти редагуєш.
+  void _play() {
+    final cubit = _game.editorWorld.objectManager.sceneCubit;
+    final snapshot = cubit.state.entities.map((e) => EntitySnapshot.of(e).toEntity()).toList();
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaytestScreen(
+          entities: snapshot,
+          tileSize: _game.tileSize,
+          groundY: _game.gridLength * _game.tileSize,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<SceneCubit>.value(
@@ -60,6 +80,17 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
             const InspectorPanel(),
             ShapeToolbar(game: _game),
             VideoTextureHost(manager: getIt<VideoTextureManager>()),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'play',
+                backgroundColor: Colors.green,
+                tooltip: 'Playtest',
+                onPressed: _play,
+                child: const Icon(Icons.play_arrow),
+              ),
+            ),
           ],
         ),
       ),

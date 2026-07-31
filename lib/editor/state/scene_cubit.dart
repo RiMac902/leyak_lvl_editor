@@ -87,6 +87,14 @@ class SceneCubit extends Cubit<SceneState> {
     refresh();
   }
 
+  /// Позначає/знімає папку як фон рівня — див.
+  /// [LayerFolderService.setFolderBackground].
+  void setFolderBackground(String folderId, bool value) {
+    _history.checkpoint();
+    _layerFolderService.setFolderBackground(folderId, value);
+    refresh();
+  }
+
   /// Виділяє [entity] (клік по рядку в Layers panel) — якщо вона в
   /// постійній групі, виділяє одразу всю групу, як і клік на канвасі.
   /// Заблоковані сутності ігнорує — так само, як і hit-test на канвасі.

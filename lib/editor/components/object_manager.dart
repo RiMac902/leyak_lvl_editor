@@ -22,9 +22,11 @@ import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
 import 'package:leyak_lvl_editor/editor/rendering/tool_overlay_renderer.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
+import 'package:leyak_lvl_editor/editor/tools/camera_node_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/draw_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/editor_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/path_tool.dart';
+import 'package:leyak_lvl_editor/editor/tools/player_spawn_tool.dart';
 import 'package:leyak_lvl_editor/editor/tools/selection_tool.dart';
 
 /// Композиційний корінь для роботи з об'єктами сцени: маршрутизує
@@ -72,6 +74,10 @@ class ObjectManager extends Component
   );
 
   late final PathTool _pathTool = PathTool(_repository, _converter);
+
+  late final PlayerSpawnTool _playerSpawnTool = PlayerSpawnTool(_repository, _converter);
+
+  late final CameraNodeTool _cameraNodeTool = CameraNodeTool(_repository, _converter);
 
   late final SelectionTool _selectionTool = SelectionTool(
     _repository,
@@ -121,9 +127,19 @@ class ObjectManager extends Component
   /// [ShapeToolbar] обрано [ShapeType.path] — той самий перемикач шейпів,
   /// що й для решти форм, лише [PathTool] має свій, відмінний від
   /// [DrawTool] життєвий цикл (N кліків замість одного драгу).
+  /// [EditorMode.placeSpawn]/[EditorMode.cameraPath] — клік-only
+  /// "stamp"-інструменти, той самий [EditorTool] інтерфейс.
   EditorTool get _activeTool {
-    if (world.currentMode != EditorMode.draw) return _selectionTool;
-    return world.shapeController.current == ShapeType.path ? _pathTool : _drawTool;
+    switch (world.currentMode) {
+      case EditorMode.select:
+        return _selectionTool;
+      case EditorMode.draw:
+        return world.shapeController.current == ShapeType.path ? _pathTool : _drawTool;
+      case EditorMode.placeSpawn:
+        return _playerSpawnTool;
+      case EditorMode.cameraPath:
+        return _cameraNodeTool;
+    }
   }
 
   void handleDragStart(Vector2 worldPos) => _activeTool.dragStart(worldPos);
@@ -310,6 +326,8 @@ class ObjectManager extends Component
 
     _drawTool.beforeCommit = _history.checkpoint;
     _pathTool.beforeCommit = _history.checkpoint;
+    _playerSpawnTool.beforeCommit = _history.checkpoint;
+    _cameraNodeTool.beforeCommit = _history.checkpoint;
     _selectionTool.beforeMove = _history.checkpoint;
 
     _repository.onEntityAdded = _registry.spawn;
