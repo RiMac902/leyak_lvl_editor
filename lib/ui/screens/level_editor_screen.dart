@@ -10,7 +10,9 @@ import 'package:leyak_lvl_editor/ui/screens/playtest_screen.dart';
 import 'package:leyak_lvl_editor/ui/widgets/hud_notification.dart';
 import 'package:leyak_lvl_editor/ui/widgets/inspector_panel.dart';
 import 'package:leyak_lvl_editor/ui/widgets/layers_panel.dart';
+import 'package:leyak_lvl_editor/ui/widgets/level_file_toolbar.dart';
 import 'package:leyak_lvl_editor/ui/widgets/shape_toolbar.dart';
+import 'package:leyak_lvl_editor/ui/widgets/shortcuts_help_panel.dart';
 import 'package:leyak_lvl_editor/ui/widgets/video_texture_host.dart';
 
 class LevelEditorScreen extends StatefulWidget {
@@ -79,7 +81,14 @@ class _LevelEditorScreenState extends State<LevelEditorScreen> {
             const LayersPanel(),
             const InspectorPanel(),
             ShapeToolbar(game: _game),
+            Positioned(
+              top: 16,
+              left: 0,
+              right: 0,
+              child: Center(child: LevelFileToolbar(game: _game)),
+            ),
             VideoTextureHost(manager: getIt<VideoTextureManager>()),
+            const Positioned(bottom: 16, left: 16, child: ShortcutsHelpButton()),
             Positioned(
               bottom: 16,
               right: 16,

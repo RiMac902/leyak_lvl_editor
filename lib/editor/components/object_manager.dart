@@ -20,6 +20,7 @@ import 'package:leyak_lvl_editor/editor/models/level_entity.dart';
 import 'package:leyak_lvl_editor/editor/models/shape_type.dart';
 import 'package:leyak_lvl_editor/editor/models/transform_data.dart';
 import 'package:leyak_lvl_editor/editor/models/visual_data.dart';
+import 'package:leyak_lvl_editor/editor/persistence/level_file_service.dart';
 import 'package:leyak_lvl_editor/editor/rendering/tool_overlay_renderer.dart';
 import 'package:leyak_lvl_editor/editor/state/scene_cubit.dart';
 import 'package:leyak_lvl_editor/editor/tools/camera_node_tool.dart';
@@ -122,6 +123,12 @@ class ObjectManager extends Component
   );
 
   final ToolOverlayRenderer _overlayRenderer = const ToolOverlayRenderer();
+
+  late final LevelFileService _fileService = LevelFileService(
+    _repository,
+    _groups,
+    _layerFolders,
+  );
 
   /// В режимі малювання (F) маршрутизує на [_pathTool], коли в
   /// [ShapeToolbar] обрано [ShapeType.path] — той самий перемикач шейпів,
@@ -319,6 +326,36 @@ class ObjectManager extends Component
 
   /// Escape — скасовує побудову контуру без коміту.
   void cancelPath() => _pathTool.cancel();
+
+  /// Показує системний діалог "Зберегти як" і пише поточну сцену в обраний
+  /// `.json`-файл. Повертає `true`, якщо користувач підтвердив збереження.
+  Future<bool> saveLevel() =>
+      _fileService.save(tileSize: game.tileSize, gridWidth: game.gridWidth, gridLength: game.gridLength);
+
+  /// Показує системний діалог "Відкрити" і повністю замінює поточну сцену
+  /// вмістом обраного файлу (включно з tileSize/розміром сітки).
+  /// Повертає `true`, якщо файл дійсно завантажено.
+  Future<bool> openLevel() async {
+    final document = await _fileService.open();
+    if (document == null) return false;
+
+    game.tileSize = document.tileSize;
+    game.gridWidth = document.gridWidth;
+    game.gridLength = document.gridLength;
+
+    // Старе виділення посилається на сутності, яких більше немає в
+    // репозиторії після replaceAll (див. LevelFileService.open) — інакше
+    // гізмо/підсвітка лишились би вказувати на видалені об'єкти.
+    _selectionTool.selected.clear();
+    _gizmoController.onSelectionChanged();
+    _pathNodeGizmoController.onSelectionChanged();
+    // LayerFolderRepository.onChanged isn't wired to sceneCubit.refresh
+    // (unlike _repository/_groups), and replaceAll order above means an
+    // entities-triggered refresh could run before the folders are actually
+    // replaced — force one final refresh so state.folders isn't stale.
+    sceneCubit.refresh();
+    return true;
+  }
 
   @override
   Future<void> onLoad() async {

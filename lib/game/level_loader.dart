@@ -8,6 +8,7 @@ import 'package:leyak_lvl_editor/game/components/player.dart';
 import 'package:leyak_lvl_editor/game/components/speed_trigger.dart';
 import 'package:leyak_lvl_editor/game/player_mode.dart';
 import 'package:leyak_lvl_editor/game/speed_trigger_type.dart';
+import 'package:leyak_lvl_editor/game/trigger_kind.dart';
 
 /// Результат [buildLevel] — компоненти для додавання у світ гри +
 /// прямий доступ до [player] (потрібен [PlaytestGame] для камери й
@@ -45,36 +46,24 @@ LoadedLevel buildLevel(
   final cameraNodes = <CameraNode>[];
 
   for (final entity in entities) {
-    if (entity.customProperties['isPlayerSpawn'] == true) {
-      spawnPosition = entity.transform.position * tileSize;
-      continue;
+    switch (classifyEntity(entity)) {
+      case TriggerKind.playerSpawn:
+        spawnPosition = entity.transform.position * tileSize;
+      case TriggerKind.cameraNode:
+        cameraNodes.add(CameraNode.fromEntity(entity, tileSize));
+      case TriggerKind.modeTrigger:
+        final mode = playerModeFromString(entity.customProperties['modeTrigger'] as String?)!;
+        components.add(ModeTrigger(entity, mode, tileSize: tileSize));
+      case TriggerKind.speedTrigger:
+        final speedType = speedTriggerTypeFromString(
+          entity.customProperties['speedTrigger'] as String?,
+        )!;
+        components.add(SpeedTrigger(entity, speedType, tileSize: tileSize));
+      case TriggerKind.finish:
+        components.add(FinishLine(entity, tileSize: tileSize));
+      case TriggerKind.block:
+        components.add(LevelBlock(entity, tileSize: tileSize));
     }
-
-    if (entity.customProperties['isCameraNode'] == true) {
-      cameraNodes.add(CameraNode.fromEntity(entity, tileSize));
-      continue;
-    }
-
-    final mode = playerModeFromString(entity.customProperties['modeTrigger'] as String?);
-    if (mode != null) {
-      components.add(ModeTrigger(entity, mode, tileSize: tileSize));
-      continue;
-    }
-
-    final speedType = speedTriggerTypeFromString(
-      entity.customProperties['speedTrigger'] as String?,
-    );
-    if (speedType != null) {
-      components.add(SpeedTrigger(entity, speedType, tileSize: tileSize));
-      continue;
-    }
-
-    if (entity.customProperties['isFinish'] == true) {
-      components.add(FinishLine(entity, tileSize: tileSize));
-      continue;
-    }
-
-    components.add(LevelBlock(entity, tileSize: tileSize));
   }
 
   cameraNodes.sort((a, b) => a.x.compareTo(b.x));

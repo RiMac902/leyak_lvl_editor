@@ -52,8 +52,6 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler 
   late final PlayerTrail trail = PlayerTrail(sampleTarget: this);
 
   late final PhysicsParams _params;
-  late final Map<PlayerMode, PlayerPhysics> _physicsByMode;
-  late final Map<PlayerMode, PlayerSkin> _skinsByMode;
   PlayerPhysics? _physics;
   PlayerSkin? _activeSkin;
 
@@ -106,23 +104,6 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler 
       playerSize: playerSize,
     );
 
-    _physicsByMode = {
-      PlayerMode.cube: EarthJumpPhysics(_params),
-      PlayerMode.wave: WavePhysics(_params),
-      PlayerMode.ship: ShipPhysics(_params),
-      PlayerMode.ball: BallPhysics(_params),
-      PlayerMode.sine: SinePhysics(_params),
-      PlayerMode.ufo: UfoPhysics(_params),
-    };
-    _skinsByMode = const {
-      PlayerMode.cube: CubeSkin(),
-      PlayerMode.wave: WaveSkin(),
-      PlayerMode.ship: ShipSkin(),
-      PlayerMode.ball: BallSkin(),
-      PlayerMode.sine: SineSkin(),
-      PlayerMode.ufo: UfoSkin(),
-    };
-
     _cubeHitbox = RectangleHitbox();
     _waveHitbox = PolygonHitbox([
       Vector2(0, 0),
@@ -139,13 +120,34 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler 
     ], anchor: Anchor.center, position: Vector2.all(playerSize / 2));
     _ballHitbox = CircleHitbox();
 
-    _physics = _physicsByMode[PlayerMode.cube];
+    _physics = _physicsFor(PlayerMode.cube);
     _applyModeVisuals(PlayerMode.cube);
   }
 
+  /// Exhaustive `switch` (без `default`) замість `Map<PlayerMode, ...>` —
+  /// новий [PlayerMode] не скомпілюється, поки тут не додано відповідний
+  /// case, на відміну від Map-літерала, що мовчки повернув би `null`.
+  PlayerPhysics _physicsFor(PlayerMode mode) => switch (mode) {
+    PlayerMode.cube => EarthJumpPhysics(_params),
+    PlayerMode.wave => WavePhysics(_params),
+    PlayerMode.ship => ShipPhysics(_params),
+    PlayerMode.ball => BallPhysics(_params),
+    PlayerMode.sine => SinePhysics(_params),
+    PlayerMode.ufo => UfoPhysics(_params),
+  };
+
+  PlayerSkin _skinFor(PlayerMode mode) => switch (mode) {
+    PlayerMode.cube => const CubeSkin(),
+    PlayerMode.wave => const WaveSkin(),
+    PlayerMode.ship => const ShipSkin(),
+    PlayerMode.ball => const BallSkin(),
+    PlayerMode.sine => const SineSkin(),
+    PlayerMode.ufo => const UfoSkin(),
+  };
+
   void _setMode(PlayerMode mode) {
     state.mode = mode;
-    _physics = _physicsByMode[mode];
+    _physics = _physicsFor(mode);
     _applyModeVisuals(mode);
     state.rotationAngle = 0.0;
 
@@ -173,7 +175,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler 
   }
 
   void _applyModeVisuals(PlayerMode mode) {
-    _activeSkin = _skinsByMode[mode];
+    _activeSkin = _skinFor(mode);
     _updateHitboxes(mode);
     trail.enabled = mode == PlayerMode.wave || mode == PlayerMode.ship;
   }

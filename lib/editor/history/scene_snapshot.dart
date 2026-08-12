@@ -19,6 +19,10 @@ class ShapeStyleSnapshot {
     required this.lineThickness,
     required this.lineStart,
     required this.lineEnd,
+    required this.pathPoints,
+    required this.pathHandlesIn,
+    required this.pathHandlesOut,
+    required this.pathClosed,
   });
 
   factory ShapeStyleSnapshot.of(ShapeStyle style) => ShapeStyleSnapshot._(
@@ -26,18 +30,30 @@ class ShapeStyleSnapshot {
     lineThickness: style.lineThickness,
     lineStart: style.lineStart.clone(),
     lineEnd: style.lineEnd.clone(),
+    pathPoints: style.pathPoints.map((v) => v.clone()).toList(),
+    pathHandlesIn: style.pathHandlesIn.map((v) => v.clone()).toList(),
+    pathHandlesOut: style.pathHandlesOut.map((v) => v.clone()).toList(),
+    pathClosed: style.pathClosed,
   );
 
   final List<double> cornerRadii;
   final double lineThickness;
   final Vector2 lineStart;
   final Vector2 lineEnd;
+  final List<Vector2> pathPoints;
+  final List<Vector2> pathHandlesIn;
+  final List<Vector2> pathHandlesOut;
+  final bool pathClosed;
 
   ShapeStyle toStyle() => ShapeStyle(
     cornerRadii: List<double>.of(cornerRadii),
     lineThickness: lineThickness,
     lineStart: lineStart.clone(),
     lineEnd: lineEnd.clone(),
+    pathPoints: pathPoints.map((v) => v.clone()).toList(),
+    pathHandlesIn: pathHandlesIn.map((v) => v.clone()).toList(),
+    pathHandlesOut: pathHandlesOut.map((v) => v.clone()).toList(),
+    pathClosed: pathClosed,
   );
 }
 
